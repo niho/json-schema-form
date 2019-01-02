@@ -4,7 +4,7 @@ import Browser
 import Form exposing (Msg(..))
 import Html exposing (..)
 import Html.Events exposing (..)
-import Json.Encode exposing (bool, string)
+import Json.Encode exposing (bool, float, int, string)
 import Json.Schema.Builder exposing (..)
 import Schema
 import Schema.Encode
@@ -37,12 +37,14 @@ init =
                             |> withExclusiveMinimum 5
                             |> withExclusiveMaximum 10
                             |> withMultipleOf 2
+                            |> withDefault (int 6)
                       )
                     , ( "bar"
                       , buildSchema
                             |> withType "number"
                             |> withMinimum 5.5
                             |> withMaximum 10.1
+                            |> withDefault (float 6.8)
                       )
                     , ( "color"
                       , buildSchema
@@ -65,6 +67,7 @@ init =
                                         |> withTitle "Email"
                                         |> withDescription "Your email address."
                                         |> withFormat "email"
+                                        |> withDefault (string "a@example.com")
                                   )
                                 , ( "phone"
                                   , buildSchema

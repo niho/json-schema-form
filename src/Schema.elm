@@ -3,6 +3,7 @@ module Schema exposing (init, update, view)
 import Form as F
 import Html exposing (..)
 import Json.Schema.Definitions exposing (Schema)
+import Schema.Default exposing (default)
 import Schema.Form exposing (Form)
 import Schema.Validation exposing (validation)
 
@@ -19,7 +20,7 @@ type alias Msg =
 
 init : Schema -> State
 init schema =
-    { form = F.initial [] (validation schema)
+    { form = F.initial (default schema) (validation schema)
     , schema = schema
     }
 
