@@ -83,6 +83,8 @@ init =
                     , ( "contact"
                       , buildSchema
                             |> withType "object"
+                            |> withTitle "Contact details"
+                            |> withDescription "Please enter your contact details."
                             |> withProperties
                                 [ ( "email"
                                   , buildSchema

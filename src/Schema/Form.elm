@@ -105,13 +105,18 @@ fieldView path schema type_ form =
                             List.map schemataItem schemata
 
                 meta =
-                    [ Maybe.map (\str -> h3 [] [ text str ]) schema.title
+                    [ Maybe.map (\str -> legend [] [ text str ]) schema.title
                     , Maybe.map (\str -> p [] [ text str ]) schema.description
                     , Maybe.map (error errorString) f.liveError
                     ]
                         |> List.filterMap identity
             in
-            div [ id (fieldPath path), tabindex -1 ] (meta ++ fields)
+            fieldset
+                [ name (fieldPath path)
+                , id (fieldPath path)
+                , tabindex -1
+                ]
+                (meta ++ fields)
 
         NullType ->
             fieldset []
@@ -129,7 +134,7 @@ txt schema f =
 
 checkbox : SubSchema -> F.FieldState ValidationError Bool -> Html F.Msg
 checkbox schema f =
-    fieldset
+    div
         [ classList
             [ ( "form-group", True )
             , ( "form-check", True )
@@ -191,7 +196,7 @@ option schema =
 
 field : SubSchema -> F.FieldState ValidationError String -> Html F.Msg -> Html F.Msg
 field schema f content =
-    fieldset
+    div
         [ classList
             [ ( "form-group", True )
             , ( "is-invalid", f.liveError /= Nothing )
