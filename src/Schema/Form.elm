@@ -54,8 +54,8 @@ objectView path schema form =
         AnyType ->
             fieldset [] []
 
-        NullableType _ ->
-            fieldset [] []
+        NullableType singleType ->
+            fieldView path schema singleType form
 
         UnionType _ ->
             fieldset [] []

@@ -50,7 +50,7 @@ init =
                       , buildSchema
                             |> withTitle "Select a color"
                             |> withDescription "Choose any of three colors."
-                            |> withType "string"
+                            |> withNullableType "string"
                             |> withEnum
                                 [ string "red"
                                 , string "green"
