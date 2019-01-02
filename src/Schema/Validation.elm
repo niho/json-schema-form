@@ -67,6 +67,7 @@ singleType schema type_ =
         IntegerType ->
             int
                 |> andMaybe constInt schema.const
+                |> andMaybe multipleOf (Maybe.map round schema.multipleOf)
                 |> andMaybe minInt (Maybe.map round (minimum schema))
                 |> andMaybe maxInt (Maybe.map round (maximum schema))
                 |> andMaybe enumInt schema.enum
@@ -173,6 +174,15 @@ pattern str =
 
         Nothing ->
             \_ -> fail (Form.Error.value InvalidFormat)
+
+
+multipleOf : Int -> Int -> Validation e Int
+multipleOf multiplier value =
+    if remainderBy multiplier value == 0 then
+        succeed value
+
+    else
+        fail (Form.Error.value NotIncludedIn)
 
 
 minimum : SubSchema -> Maybe Float

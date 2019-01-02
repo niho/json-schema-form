@@ -36,6 +36,7 @@ init =
                             |> withType "integer"
                             |> withExclusiveMinimum 5
                             |> withExclusiveMaximum 10
+                            |> withMultipleOf 2
                       )
                     , ( "bar"
                       , buildSchema
