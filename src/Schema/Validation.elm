@@ -15,9 +15,11 @@ import Json.Schema.Definitions
         , Type(..)
         )
 import Regex
+import Schema.Encode
 import Schema.Error exposing (ValidationError(..))
 import Schema.Format
 import Schema.Value exposing (Value(..))
+import Set
 
 
 validation : Schema -> Validation ValidationError Value
@@ -104,10 +106,16 @@ singleType schema type_ =
 
                 ItemDefinition schema_ ->
                     list (validation schema_)
+                        |> andMaybe uniqueItems schema.uniqueItems
+                        |> andMaybe minItems schema.minItems
+                        |> andMaybe maxItems schema.maxItems
                         |> map ListValue
 
                 ArrayOfItems schemaList ->
-                    list (oneOf (List.map validation schemaList))
+                    tuple (List.map validation schemaList)
+                        |> andMaybe uniqueItems schema.uniqueItems
+                        |> andMaybe minItems schema.minItems
+                        |> andMaybe maxItems schema.maxItems
                         |> map ListValue
 
         ObjectType ->
@@ -271,6 +279,52 @@ customFormat formatId value =
 
         _ ->
             succeed value
+
+
+uniqueItems : Bool -> List Value -> Validation ValidationError (List Value)
+uniqueItems unique value =
+    let
+        items =
+            List.map Schema.Encode.encode value
+                |> List.map (Json.Encode.encode 0)
+    in
+    if unique then
+        if Set.size (Set.fromList items) == List.length value then
+            succeed value
+
+        else
+            fail (customError InvalidSet)
+
+    else
+        succeed value
+
+
+minItems : Int -> List a -> Validation ValidationError (List a)
+minItems count list =
+    if List.length list >= count then
+        succeed list
+
+    else
+        fail (customError (ShorterListThan count))
+
+
+maxItems : Int -> List a -> Validation ValidationError (List a)
+maxItems count list =
+    if List.length list <= count then
+        succeed list
+
+    else
+        fail (customError (LongerListThan count))
+
+
+tuple : List (Validation ValidationError a) -> Validation ValidationError (List a)
+tuple validations =
+    let
+        item idx =
+            field ("tuple" ++ String.fromInt idx)
+    in
+    List.indexedMap item validations
+        |> sequence
 
 
 andMaybe :

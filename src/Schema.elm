@@ -1,4 +1,4 @@
-module Schema exposing (init, update, view)
+module Schema exposing (Msg, State, init, update, view)
 
 import Form as F
 import Html exposing (..)
@@ -27,7 +27,7 @@ init schema =
 
 update : Msg -> State -> State
 update msg state =
-    { state | form = F.update (validation state.schema) msg state.form }
+    { state | form = Debug.log "form" <| F.update (validation state.schema) msg state.form }
 
 
 view : State -> Html Msg

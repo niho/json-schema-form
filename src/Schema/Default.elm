@@ -4,7 +4,8 @@ import Form.Field exposing (..)
 import Json.Decode
 import Json.Schema.Definitions
     exposing
-        ( Schema(..)
+        ( Items(..)
+        , Schema(..)
         , Schemata(..)
         , SingleType(..)
         , SubSchema
@@ -47,20 +48,22 @@ field ( name, schema ) =
                 Just value ->
                     case schema_.type_ of
                         AnyType ->
-                            []
+                            anyType value
+                                |> Maybe.map (\f -> [ ( name, f ) ])
+                                |> Maybe.withDefault []
 
                         SingleType type_ ->
-                            singleType value type_
+                            singleType schema_ value type_
                                 |> Maybe.map (\f -> [ ( name, f ) ])
                                 |> Maybe.withDefault []
 
                         NullableType type_ ->
-                            singleType value type_
+                            singleType schema_ value type_
                                 |> Maybe.map (\f -> [ ( name, f ) ])
                                 |> Maybe.withDefault []
 
                         UnionType types ->
-                            List.map (singleType value) types
+                            List.map (singleType schema_ value) types
                                 |> List.filterMap identity
                                 |> List.map (\f -> ( name, f ))
 
@@ -76,8 +79,22 @@ field ( name, schema ) =
                            )
 
 
-singleType : Json.Decode.Value -> SingleType -> Maybe Field
-singleType value type_ =
+anyType : Json.Decode.Value -> Maybe Field
+anyType value =
+    [ value |> Json.Decode.decodeValue asString |> Result.map string
+    , value |> Json.Decode.decodeValue Json.Decode.bool |> Result.map bool
+    , value
+        |> Json.Decode.decodeValue asList
+        |> Result.map (List.map string)
+        |> Result.map list
+    ]
+        |> List.map Result.toMaybe
+        |> List.filterMap identity
+        |> List.head
+
+
+singleType : SubSchema -> Json.Decode.Value -> SingleType -> Maybe Field
+singleType schema value type_ =
     case type_ of
         IntegerType ->
             value
@@ -106,10 +123,59 @@ singleType value type_ =
                 |> Maybe.map bool
 
         ArrayType ->
-            Nothing
+            case schema.items of
+                NoItems ->
+                    value
+                        |> Json.Decode.decodeValue (Json.Decode.list asString)
+                        |> Result.toMaybe
+                        |> Maybe.map (List.map string)
+                        |> Maybe.map list
+
+                ItemDefinition item ->
+                    value
+                        |> Json.Decode.decodeValue (Json.Decode.list asString)
+                        |> Result.toMaybe
+                        |> Maybe.map (List.map string)
+                        |> Maybe.map list
+
+                ArrayOfItems items ->
+                    value
+                        |> Json.Decode.decodeValue (Json.Decode.list asString)
+                        |> Result.toMaybe
+                        |> Maybe.map
+                            (List.indexedMap
+                                (\idx str ->
+                                    ( "tuple" ++ String.fromInt idx
+                                    , string str
+                                    )
+                                )
+                            )
+                        |> Maybe.map group
 
         ObjectType ->
             Nothing
 
         NullType ->
             Nothing
+
+
+asString : Json.Decode.Decoder String
+asString =
+    Json.Decode.oneOf
+        [ Json.Decode.string
+        , Json.Decode.int
+            |> Json.Decode.andThen
+                (\a ->
+                    Json.Decode.succeed (String.fromInt a)
+                )
+        , Json.Decode.float
+            |> Json.Decode.andThen
+                (\a ->
+                    Json.Decode.succeed (String.fromFloat a)
+                )
+        ]
+
+
+asList : Json.Decode.Decoder (List String)
+asList =
+    Json.Decode.list asString

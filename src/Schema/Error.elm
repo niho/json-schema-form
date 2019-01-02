@@ -9,6 +9,9 @@ import Form.Error exposing (ErrorValue(..))
 
 type ValidationError
     = Invalid
+    | InvalidSet
+    | ShorterListThan Int
+    | LongerListThan Int
 
 
 errorString : ErrorValue ValidationError -> String
@@ -58,3 +61,12 @@ errorString error =
 
         CustomError Invalid ->
             "Invalid"
+
+        CustomError InvalidSet ->
+            "Den kombination av val du har gjort är inte tillåten."
+
+        CustomError (ShorterListThan n) ->
+            "Måste innehålla minst " ++ String.fromInt n ++ " saker."
+
+        CustomError (LongerListThan n) ->
+            "Får inte innehålla mer än " ++ String.fromInt n ++ " saker."
