@@ -57,6 +57,29 @@ init =
                                 , string "blue"
                                 ]
                       )
+                    , ( "airport"
+                      , buildSchema
+                            |> withTitle "Select an airport"
+                            |> withNullableType "string"
+                            |> withDefault (string "ARN")
+                            |> withOneOf
+                                [ buildSchema
+                                    |> withTitle "Stockholm Arlanda"
+                                    |> withConst (string "ARN")
+                                , buildSchema
+                                    |> withTitle "London Heathrow"
+                                    |> withConst (string "LHR")
+                                , buildSchema
+                                    |> withTitle "Dubai International Airport"
+                                    |> withConst (string "DXB")
+                                , buildSchema
+                                    |> withTitle "Paris Charles de Gaulle"
+                                    |> withConst (string "CDG")
+                                , buildSchema
+                                    |> withTitle "Other"
+                                    |> withDescription "Enter airport IATA code"
+                                ]
+                      )
                     , ( "contact"
                       , buildSchema
                             |> withType "object"

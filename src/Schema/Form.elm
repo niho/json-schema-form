@@ -74,7 +74,7 @@ fieldView path schema type_ form =
             txt schema (getFieldAsString path form)
 
         StringType ->
-            case schema.enum of
+            case schema.oneOf of
                 Just _ ->
                     select schema (getFieldAsString path form)
 
@@ -159,12 +159,9 @@ select : SubSchema -> F.FieldState ValidationError String -> Html F.Msg
 select schema f =
     let
         options =
-            case schema.enum of
+            case schema.oneOf of
                 Just values ->
-                    values
-                        |> List.map (Json.Decode.decodeValue Json.Decode.string)
-                        |> List.map (Result.withDefault "")
-                        |> List.map (\str -> ( str, str ))
+                    List.map option values
 
                 Nothing ->
                     []
@@ -175,6 +172,21 @@ select schema f =
             [ class "form-control custom-select"
             , id f.path
             ]
+
+
+option : Schema -> ( String, String )
+option schema =
+    case schema of
+        BooleanSchema _ ->
+            ( "", "" )
+
+        ObjectSchema schema_ ->
+            ( schema_.const
+                |> Maybe.map (Json.Decode.decodeValue Json.Decode.string)
+                |> Maybe.map (Result.withDefault "")
+                |> Maybe.withDefault ""
+            , schema_.title |> Maybe.withDefault ""
+            )
 
 
 field : SubSchema -> F.FieldState ValidationError String -> Html F.Msg -> Html F.Msg
