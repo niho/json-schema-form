@@ -1,4 +1,4 @@
-module Schema.Form exposing (Form, schemaView)
+module Schema.Form exposing (Form, Options, schemaView)
 
 import Form as F
 import Form.Error exposing (ErrorValue(..))
@@ -19,9 +19,13 @@ import Json.Schema.Definitions
         , Type(..)
         , blankSchema
         )
-import Schema.Error exposing (ValidationError, errorString)
+import Schema.Error exposing (Errors, ValidationError)
 import Schema.Validation exposing (validation)
 import Schema.Value exposing (Value(..))
+
+
+type alias Options =
+    { errors : Errors ValidationError }
 
 
 type alias Form =
@@ -32,12 +36,8 @@ type alias Path =
     List String
 
 
-type alias ErrorString e =
-    ErrorValue e -> String
-
-
-schemaView : Path -> Schema -> Form -> Html F.Msg
-schemaView path schema form =
+schemaView : Options -> Path -> Schema -> Form -> Html F.Msg
+schemaView options path schema form =
     case schema of
         BooleanSchema value ->
             div []
@@ -49,43 +49,43 @@ schemaView path schema form =
                 ]
 
         ObjectSchema subSchema ->
-            objectView path subSchema form
+            objectView options path subSchema form
 
 
-objectView : Path -> SubSchema -> Form -> Html F.Msg
-objectView path schema form =
+objectView : Options -> Path -> SubSchema -> Form -> Html F.Msg
+objectView options path schema form =
     case schema.type_ of
         AnyType ->
-            fieldView path schema BooleanType form
+            fieldView options path schema BooleanType form
 
         NullableType singleType ->
-            fieldView path schema singleType form
+            fieldView options path schema singleType form
 
         UnionType _ ->
-            fieldView path schema StringType form
+            fieldView options path schema StringType form
 
         SingleType singleType ->
-            fieldView path schema singleType form
+            fieldView options path schema singleType form
 
 
-fieldView : Path -> SubSchema -> SingleType -> Form -> Html F.Msg
-fieldView path schema type_ form =
+fieldView : Options -> Path -> SubSchema -> SingleType -> Form -> Html F.Msg
+fieldView options path schema type_ form =
     case type_ of
         IntegerType ->
-            txt schema (getFieldAsString path form)
+            txt options schema (getFieldAsString path form)
 
         NumberType ->
-            txt schema (getFieldAsString path form)
+            txt options schema (getFieldAsString path form)
 
         StringType ->
             if schema.oneOf /= Nothing || schema.anyOf /= Nothing then
-                select schema (getFieldAsString path form)
+                select options schema (getFieldAsString path form)
 
             else
-                txt schema (getFieldAsString path form)
+                txt options schema (getFieldAsString path form)
 
         BooleanType ->
-            checkbox schema (getFieldAsBool path form)
+            checkbox options schema (getFieldAsBool path form)
 
         ArrayType ->
             let
@@ -94,13 +94,13 @@ fieldView path schema type_ form =
             in
             case schema.items of
                 NoItems ->
-                    field schema f (list path form ( schema.title, blankSchema ))
+                    field options schema f (list options path form ( schema.title, blankSchema ))
 
                 ItemDefinition item ->
-                    field schema f (list path form ( schema.title, item ))
+                    field options schema f (list options path form ( schema.title, item ))
 
                 ArrayOfItems items ->
-                    field schema f (tuple path form items)
+                    field options schema f (tuple options path form items)
 
         ObjectType ->
             let
@@ -108,7 +108,7 @@ fieldView path schema type_ form =
                     getFieldAsString path form
 
                 schemataItem ( name, subSchema ) =
-                    schemaView (path ++ [ name ]) subSchema form
+                    schemaView options (path ++ [ name ]) subSchema form
 
                 fields =
                     case schema.properties of
@@ -118,16 +118,17 @@ fieldView path schema type_ form =
                         Just (Json.Schema.Definitions.Schemata schemata) ->
                             List.map schemataItem schemata
             in
-            group schema f fields
+            group options schema f fields
 
         NullType ->
             fieldset []
                 []
 
 
-txt : SubSchema -> F.FieldState ValidationError String -> Html F.Msg
-txt schema f =
-    field schema
+txt : Options -> SubSchema -> F.FieldState ValidationError String -> Html F.Msg
+txt options schema f =
+    field options
+        schema
         f
         [ fieldTitle schema
         , Input.textInput f
@@ -140,8 +141,8 @@ txt schema f =
         ]
 
 
-checkbox : SubSchema -> F.FieldState ValidationError Bool -> Html F.Msg
-checkbox schema f =
+checkbox : Options -> SubSchema -> F.FieldState ValidationError Bool -> Html F.Msg
+checkbox options schema f =
     div
         [ classList
             [ ( "form-group", True )
@@ -158,12 +159,7 @@ checkbox schema f =
                 , id f.path
                 ]
             , text (schema.title |> Maybe.withDefault "")
-            , case f.liveError of
-                Just err ->
-                    error errorString err
-
-                Nothing ->
-                    text ""
+            , liveError options.errors f |> Maybe.withDefault (text "")
             , case schema.description of
                 Just str ->
                     fieldDescription str
@@ -174,8 +170,8 @@ checkbox schema f =
         ]
 
 
-select : SubSchema -> F.FieldState ValidationError String -> Html F.Msg
-select schema f =
+select : Options -> SubSchema -> F.FieldState ValidationError String -> Html F.Msg
+select options schema f =
     let
         schemata =
             List.concat
@@ -183,7 +179,7 @@ select schema f =
                 , schema.anyOf |> Maybe.withDefault []
                 ]
 
-        options =
+        items =
             schemata
                 |> List.map option
                 |> List.map
@@ -208,11 +204,12 @@ select schema f =
                         )
                     )
     in
-    field schema
+    field options
+        schema
         f
         [ fieldTitle schema
         , Input.selectInput
-            options
+            items
             f
             [ classList
                 [ ( "form-control custom-select", True )
@@ -237,11 +234,12 @@ option schema =
 
 
 set :
-    Path
+    Options
+    -> Path
     -> Form
     -> List Schema
     -> List (Html F.Msg)
-set path form items =
+set options path form items =
     let
         itemPath schema_ =
             case schema_ of
@@ -255,17 +253,18 @@ set path form items =
                     path
 
         itemView schema_ =
-            schemaView (itemPath schema_) schema_ form
+            schemaView options (itemPath schema_) schema_ form
     in
     List.map itemView items
 
 
 list :
-    Path
+    Options
+    -> Path
     -> Form
     -> ( Maybe String, Schema )
     -> List (Html F.Msg)
-list path form ( title, schema ) =
+list options path form ( title, schema ) =
     let
         indexes =
             getListIndexes path form
@@ -276,7 +275,7 @@ list path form ( title, schema ) =
         itemView idx =
             li
                 [ class "list-group-item bg-light" ]
-                [ schemaView (itemPath idx) schema form
+                [ schemaView options (itemPath idx) schema form
                 , button
                     [ onClickPreventDefault (F.RemoveItem (fieldPath path) idx)
                     , class "btn btn-outline-secondary btn-sm btn-remove"
@@ -295,11 +294,12 @@ list path form ( title, schema ) =
 
 
 tuple :
-    Path
+    Options
+    -> Path
     -> Form
     -> List Schema
     -> List (Html F.Msg)
-tuple path form schemata =
+tuple options path form schemata =
     let
         itemPath idx =
             path ++ [ "tuple" ++ String.fromInt idx ]
@@ -307,20 +307,20 @@ tuple path form schemata =
         itemView idx schema =
             div
                 [ class "col" ]
-                [ schemaView (itemPath idx) schema form ]
+                [ schemaView options (itemPath idx) schema form ]
     in
     [ div [ class "form-row" ] (List.indexedMap itemView schemata) ]
 
 
-field : SubSchema -> F.FieldState ValidationError String -> List (Html F.Msg) -> Html F.Msg
-field schema f content =
+field : Options -> SubSchema -> F.FieldState ValidationError String -> List (Html F.Msg) -> Html F.Msg
+field options schema f content =
     let
         meta =
             [ Maybe.map fieldDescription schema.description ]
                 |> List.filterMap identity
 
         feedback =
-            [ Maybe.map (error errorString) f.liveError ]
+            [ liveError options.errors f ]
                 |> List.filterMap identity
     in
     div
@@ -335,8 +335,8 @@ field schema f content =
         ]
 
 
-group : SubSchema -> F.FieldState ValidationError String -> List (Html F.Msg) -> Html F.Msg
-group schema f content =
+group : Options -> SubSchema -> F.FieldState ValidationError String -> List (Html F.Msg) -> Html F.Msg
+group options schema f content =
     let
         meta =
             [ Maybe.map (\str -> legend [] [ text str ]) schema.title
@@ -345,7 +345,7 @@ group schema f content =
                 |> List.filterMap identity
 
         feedback =
-            [ Maybe.map (error errorString) f.liveError
+            [ liveError options.errors f
             ]
                 |> List.filterMap identity
     in
@@ -372,13 +372,17 @@ fieldDescription str =
     div [ class "form-text text-muted" ] [ text str ]
 
 
-error : ErrorString ValidationError -> ErrorValue ValidationError -> Html F.Msg
-error func err =
-    div
-        [ class "invalid-feedback"
-        , style "display" "block"
-        ]
-        [ text (func err) ]
+liveError : Errors ValidationError -> F.FieldState ValidationError a -> Maybe (Html F.Msg)
+liveError func f =
+    f.liveError
+        |> Maybe.map
+            (\err ->
+                div
+                    [ class "invalid-feedback"
+                    , style "display" "block"
+                    ]
+                    [ text (func f.path err) ]
+            )
 
 
 getFieldAsBool : Path -> F.Form e o -> F.FieldState e Bool

@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Form exposing (Msg(..))
+import Form.Error exposing (ErrorValue(..))
 import Html exposing (..)
 import Html.Attributes exposing (class)
 import Html.Events exposing (..)
@@ -10,11 +11,107 @@ import Json.Schema.Builder exposing (..)
 import Json.Schema.Definitions
 import Schema
 import Schema.Encode
+import Schema.Error exposing (ValidationError(..))
 
 
 main : Program () Schema.State Schema.Msg
 main =
     Browser.sandbox { init = init, update = update, view = view }
+
+
+init : Schema.State
+init =
+    case schema of
+        Ok schema_ ->
+            Schema.init { errors = errorString } schema_
+
+        Err error ->
+            Debug.todo error
+
+
+update : Schema.Msg -> Schema.State -> Schema.State
+update msg state =
+    Schema.update msg state
+
+
+view : Schema.State -> Html Schema.Msg
+view state =
+    form [ onSubmit Form.Submit ]
+        [ Schema.view state
+        , button [ class "btn btn-primary" ] [ text "Submit" ]
+        , case Form.getOutput state.form of
+            Just output ->
+                let
+                    json =
+                        Json.Encode.encode 4 (Schema.Encode.encode output)
+                in
+                pre [] [ text json ]
+
+            Nothing ->
+                text ""
+        ]
+
+
+errorString : Schema.Errors
+errorString path error =
+    case error of
+        Empty ->
+            "The field can not be empty."
+
+        InvalidString ->
+            "This field is required."
+
+        InvalidEmail ->
+            "That is not a valid email address."
+
+        InvalidFormat ->
+            "That is not the correct format."
+
+        InvalidInt ->
+            "That is not a valid number."
+
+        InvalidFloat ->
+            "That is not a valid decimal number."
+
+        InvalidBool ->
+            "That is not a valid option."
+
+        SmallerIntThan n ->
+            "Can not be smaller than " ++ String.fromInt n ++ "."
+
+        GreaterIntThan n ->
+            "Can not be greater than " ++ String.fromInt n ++ "."
+
+        SmallerFloatThan n ->
+            "Can not be smaller than " ++ String.fromFloat n ++ "."
+
+        GreaterFloatThan n ->
+            "Can not be greater than " ++ String.fromFloat n ++ "."
+
+        ShorterStringThan n ->
+            "Must be at least " ++ String.fromInt n ++ " characters long."
+
+        LongerStringThan n ->
+            "Can not be more than " ++ String.fromInt n ++ " characters long."
+
+        NotIncludedIn ->
+            "Is not a valid selection from the list."
+
+        CustomError Invalid ->
+            "Is not valid."
+
+        CustomError InvalidSet ->
+            "All items added need to be unique."
+
+        CustomError (ShorterListThan n) ->
+            if path == "airports" then
+                "You need to add at least " ++ String.fromInt n ++ " airports."
+
+            else
+                "You need to add at least " ++ String.fromInt n ++ " items."
+
+        CustomError (LongerListThan n) ->
+            "You can not add more than " ++ String.fromInt n ++ " items."
 
 
 schema : Result String Json.Schema.Definitions.Schema
@@ -194,36 +291,3 @@ schema =
               )
             ]
         |> toSchema
-
-
-init : Schema.State
-init =
-    case schema of
-        Ok s ->
-            Schema.init s
-
-        Err error ->
-            Debug.todo error
-
-
-update : Schema.Msg -> Schema.State -> Schema.State
-update msg state =
-    Schema.update msg state
-
-
-view : Schema.State -> Html Schema.Msg
-view state =
-    form [ onSubmit Form.Submit ]
-        [ Schema.view state
-        , button [ class "btn btn-primary" ] [ text "Submit" ]
-        , case Form.getOutput state.form of
-            Just output ->
-                let
-                    json =
-                        Json.Encode.encode 4 (Schema.Encode.encode output)
-                in
-                pre [] [ text json ]
-
-            Nothing ->
-                text ""
-        ]

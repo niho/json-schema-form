@@ -1,16 +1,26 @@
-module Schema exposing (Msg, State, init, update, view)
+module Schema exposing (Errors, Msg, Options, State, init, update, view)
 
 import Form as F
 import Html exposing (..)
 import Json.Schema.Definitions exposing (Schema)
 import Schema.Default exposing (default)
-import Schema.Form exposing (Form)
+import Schema.Error
+import Schema.Form exposing (Form, Options)
 import Schema.Validation exposing (validation)
+
+
+type alias Options =
+    Schema.Form.Options
+
+
+type alias Errors =
+    Schema.Error.Errors Schema.Error.ValidationError
 
 
 type alias State =
     { form : Form
     , schema : Schema
+    , options : Options
     }
 
 
@@ -18,18 +28,19 @@ type alias Msg =
     F.Msg
 
 
-init : Schema -> State
-init schema =
+init : Options -> Schema -> State
+init options schema =
     { form = F.initial (default schema) (validation schema)
     , schema = schema
+    , options = options
     }
 
 
 update : Msg -> State -> State
 update msg state =
-    { state | form = Debug.log "form" <| F.update (validation state.schema) msg state.form }
+    { state | form = F.update (validation state.schema) msg state.form }
 
 
 view : State -> Html Msg
 view state =
-    Schema.Form.schemaView [] state.schema state.form
+    Schema.Form.schemaView state.options [] state.schema state.form
