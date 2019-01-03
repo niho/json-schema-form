@@ -7,6 +7,7 @@ import Form.Validate exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Html.Keyed
 import Json.Decode
 import Json.Schema
 import Json.Schema.Definitions
@@ -16,6 +17,7 @@ import Json.Schema.Definitions
         , SingleType(..)
         , SubSchema
         , Type(..)
+        , blankSchema
         )
 import Schema.Error exposing (ValidationError, errorString)
 import Schema.Validation exposing (validation)
@@ -92,7 +94,7 @@ fieldView path schema type_ form =
             in
             case schema.items of
                 NoItems ->
-                    group schema f []
+                    field schema f (list path form ( schema.title, blankSchema ))
 
                 ItemDefinition item ->
                     field schema f (list path form ( schema.title, item ))
@@ -164,7 +166,7 @@ checkbox schema f =
                     text ""
             , case schema.description of
                 Just str ->
-                    div [ class "form-text text-muted" ] [ text str ]
+                    fieldDescription str
 
                 Nothing ->
                     text ""
@@ -175,21 +177,42 @@ checkbox schema f =
 select : SubSchema -> F.FieldState ValidationError String -> Html F.Msg
 select schema f =
     let
-        options schemata =
-            case schemata of
-                Just values ->
-                    List.map option values
+        schemata =
+            List.concat
+                [ schema.oneOf |> Maybe.withDefault []
+                , schema.anyOf |> Maybe.withDefault []
+                ]
 
-                Nothing ->
-                    []
+        options =
+            schemata
+                |> List.map option
+                |> List.map
+                    (\( name, schema_ ) ->
+                        ( name
+                        , schema_
+                            |> Maybe.andThen .title
+                            |> Maybe.withDefault name
+                        )
+                    )
+
+        descriptions =
+            schemata
+                |> List.map option
+                |> List.map
+                    (\( name, schema_ ) ->
+                        ( name
+                        , schema_
+                            |> Maybe.andThen .description
+                            |> Maybe.map fieldDescription
+                            |> Maybe.withDefault (text "")
+                        )
+                    )
     in
     field schema
         f
         [ fieldTitle schema
         , Input.selectInput
-            (options schema.oneOf
-                ++ options schema.anyOf
-            )
+            options
             f
             [ classList
                 [ ( "form-control custom-select", True )
@@ -197,21 +220,20 @@ select schema f =
                 ]
             , id f.path
             ]
+        , conditional f descriptions
         ]
 
 
-option : Schema -> ( String, String )
+option : Schema -> ( String, Maybe SubSchema )
 option schema =
     case schema of
         BooleanSchema _ ->
-            ( "", "" )
+            ( "", Nothing )
 
         ObjectSchema schema_ ->
-            let
-                value =
-                    constAsString schema_ |> Maybe.withDefault ""
-            in
-            ( value, schema_.title |> Maybe.withDefault value )
+            ( constAsString schema_ |> Maybe.withDefault ""
+            , Just schema_
+            )
 
 
 set :
@@ -294,17 +316,11 @@ field : SubSchema -> F.FieldState ValidationError String -> List (Html F.Msg) ->
 field schema f content =
     let
         meta =
-            [ Maybe.map
-                (\str ->
-                    div [ class "form-text text-muted" ] [ text str ]
-                )
-                schema.description
-            ]
+            [ Maybe.map fieldDescription schema.description ]
                 |> List.filterMap identity
 
         feedback =
-            [ Maybe.map (error errorString) f.liveError
-            ]
+            [ Maybe.map (error errorString) f.liveError ]
                 |> List.filterMap identity
     in
     div
@@ -349,6 +365,11 @@ fieldTitle schema =
 
         Nothing ->
             text ""
+
+
+fieldDescription : String -> Html F.Msg
+fieldDescription str =
+    div [ class "form-text text-muted" ] [ text str ]
 
 
 error : ErrorString ValidationError -> ErrorValue ValidationError -> Html F.Msg
@@ -398,3 +419,16 @@ onClickPreventDefault msg =
 alwaysPreventDefault : msg -> ( msg, Bool )
 alwaysPreventDefault msg =
     ( msg, True )
+
+
+conditional : F.FieldState e String -> List ( String, Html F.Msg ) -> Html F.Msg
+conditional f conditions =
+    let
+        cond ( value, html ) =
+            if f.value == Just value then
+                Just ( value, html )
+
+            else
+                Nothing
+    in
+    Html.Keyed.node "div" [] <| List.filterMap cond conditions

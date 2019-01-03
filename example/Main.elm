@@ -116,11 +116,13 @@ schema =
                                 , buildSchema
                                     |> withTitle "London Heathrow"
                                     |> withConst (string "LHR")
+                                    |> withDescription "Heathrow Airport is a major international airport in London, United Kingdom."
                                 , buildSchema
                                     |> withTitle "Dubai International Airport"
                                     |> withConst (string "DXB")
                                 , buildSchema
                                     |> withTitle "Paris Charles de Gaulle"
+                                    |> withDescription "Paris Charles de Gaulle Airport is the largest international airport in France and the second largest in Europe."
                                     |> withConst (string "CDG")
                                 ]
                         )
