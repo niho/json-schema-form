@@ -33,22 +33,25 @@ schema =
                     |> withMaxLength 10
                     |> withMinLength 2
               )
-            , ( "int"
+            , ( "numbers"
               , buildSchema
-                    |> withType "integer"
-                    |> withTitle "Integer"
-                    |> withExclusiveMinimum 5
-                    |> withExclusiveMaximum 10
-                    |> withMultipleOf 2
-                    |> withDefault (int 6)
-              )
-            , ( "float"
-              , buildSchema
-                    |> withType "number"
-                    |> withTitle "Number"
-                    |> withMinimum 5.5
-                    |> withMaximum 10.1
-                    |> withDefault (float 6.8)
+                    |> withType "array"
+                    |> withDefault (list float [ 6, 6.8 ])
+                    |> withItems
+                        [ buildSchema
+                            |> withType "integer"
+                            |> withTitle "Integer"
+                            |> withDescription "Enter an integer between 5-10."
+                            |> withExclusiveMinimum 5
+                            |> withExclusiveMaximum 10
+                            |> withMultipleOf 2
+                        , buildSchema
+                            |> withType "number"
+                            |> withTitle "Number"
+                            |> withDescription "Enter a natural number between 5.5-10.1 (inclusive)."
+                            |> withMinimum 5.5
+                            |> withMaximum 10.1
+                        ]
               )
             , ( "color"
               , buildSchema
