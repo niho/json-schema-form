@@ -110,7 +110,8 @@ schema =
                         (buildSchema
                             |> withType "string"
                             |> withAnyOf
-                                [ buildSchema
+                                [ boolSchema False
+                                , buildSchema
                                     |> withTitle "Stockholm Arlanda"
                                     |> withConst (string "ARN")
                                 , buildSchema

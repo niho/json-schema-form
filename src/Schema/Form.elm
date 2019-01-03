@@ -275,7 +275,7 @@ list path form ( title, schema ) =
 
         itemView idx =
             li
-                [ class "list-group-item" ]
+                [ class "list-group-item bg-light" ]
                 [ schemaView (itemPath idx) schema form
                 , button
                     [ onClickPreventDefault (F.RemoveItem (fieldPath path) idx)
