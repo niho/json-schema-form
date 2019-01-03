@@ -127,17 +127,32 @@ fieldView options path schema type_ form =
 
 txt : Options -> SubSchema -> F.FieldState ValidationError String -> Html F.Msg
 txt options schema f =
-    field options
-        schema
-        f
-        [ fieldTitle schema
-        , Input.textInput f
+    let
+        attributes =
             [ classList
                 [ ( "form-control", True )
                 , ( "is-invalid", f.liveError /= Nothing )
                 ]
             , id f.path
             ]
+
+        placeholders =
+            case schema.examples of
+                Just examples ->
+                    examples
+                        |> List.map (Json.Decode.decodeValue Json.Decode.string)
+                        |> List.map Result.toMaybe
+                        |> List.filterMap identity
+                        |> List.map placeholder
+
+                Nothing ->
+                    []
+    in
+    field options
+        schema
+        f
+        [ fieldTitle schema
+        , Input.textInput f (attributes ++ placeholders)
         ]
 
 

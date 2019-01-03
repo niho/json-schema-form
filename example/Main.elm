@@ -153,7 +153,9 @@ schema =
             , ( "color"
               , buildSchema
                     |> withTitle "Color"
-                    |> withDescription "Please enter either red, gren or blue."
+                    |> withExamples
+                        [ string "Please enter either red, gren or blue."
+                        ]
                     |> withNullableType "string"
                     |> withEnum
                         [ string "red"
