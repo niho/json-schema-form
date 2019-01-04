@@ -3,15 +3,18 @@ module Main exposing (main)
 import Browser
 import Form exposing (Msg(..))
 import Form.Error exposing (ErrorValue(..))
+import Form.Validate
 import Html exposing (..)
 import Html.Attributes exposing (class)
 import Html.Events exposing (..)
 import Json.Encode exposing (bool, float, int, list, string)
 import Json.Schema.Builder exposing (..)
 import Json.Schema.Definitions
+import Regex
 import Schema
 import Schema.Encode
 import Schema.Error exposing (ValidationError(..))
+import Schema.Validation exposing (Formats)
 
 
 main : Program () Schema.State Schema.Msg
@@ -23,7 +26,7 @@ init : Schema.State
 init =
     case schema of
         Ok schema_ ->
-            Schema.init { errors = errorString } schema_
+            Schema.init { errors = errorString, formats = formats } schema_
 
         Err error ->
             Debug.todo error
@@ -112,6 +115,30 @@ errorString path error =
 
         CustomError (LongerListThan n) ->
             "You can not add more than " ++ String.fromInt n ++ " items."
+
+        CustomError (InvalidCustomFormat format) ->
+            case format of
+                "personal-number" ->
+                    "That is not a valid personal number."
+
+                _ ->
+                    "That is not the correct format."
+
+
+personalNumber : Regex.Regex
+personalNumber =
+    Maybe.withDefault Regex.never <|
+        Regex.fromString "^(19|20)[0-9]{6}[0-9]{4}$"
+
+
+formats : Formats
+formats =
+    [ ( "personal-number"
+      , { title = Nothing
+        , validation = Form.Validate.format personalNumber
+        }
+      )
+    ]
 
 
 schema : Result String Json.Schema.Definitions.Schema
@@ -282,6 +309,13 @@ schema =
                                 |> withTitle "Phone"
                                 |> withDescription "Your phone number."
                                 |> withFormat "phone"
+                          )
+                        , ( "personal_number"
+                          , buildSchema
+                                |> withType "string"
+                                |> withTitle "Personal number"
+                                |> withDescription "Your personal number."
+                                |> withFormat "personal-number"
                           )
                         ]
               )

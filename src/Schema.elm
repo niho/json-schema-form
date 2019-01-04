@@ -30,7 +30,7 @@ type alias Msg =
 
 init : Options -> Schema -> State
 init options schema =
-    { form = F.initial (default schema) (validation schema)
+    { form = F.initial (default schema) (validation options.formats schema)
     , schema = schema
     , options = options
     }
@@ -38,7 +38,14 @@ init options schema =
 
 update : Msg -> State -> State
 update msg state =
-    { state | form = F.update (validation state.schema) msg state.form }
+    let
+        form =
+            F.update
+                (validation state.options.formats state.schema)
+                msg
+                state.form
+    in
+    { state | form = form }
 
 
 view : State -> Html Msg

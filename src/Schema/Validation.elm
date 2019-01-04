@@ -1,5 +1,6 @@
-module Schema.Validation exposing (validation)
+module Schema.Validation exposing (Formats, getFormat, validation)
 
+import Dict
 import Form.Error exposing (ErrorValue(..))
 import Form.Field exposing (Field)
 import Form.Validate exposing (..)
@@ -22,8 +23,18 @@ import Schema.Value exposing (Value(..))
 import Set
 
 
-validation : Schema -> Validation ValidationError Value
-validation schema =
+type alias Formats =
+    List ( String, CustomFormat )
+
+
+type alias CustomFormat =
+    { title : Maybe String
+    , validation : String -> Validation ValidationError String
+    }
+
+
+validation : Formats -> Schema -> Validation ValidationError Value
+validation formats schema =
     case schema of
         BooleanSchema bool ->
             if bool then
@@ -33,38 +44,38 @@ validation schema =
                 fail (customError Invalid)
 
         ObjectSchema objectSchema ->
-            subSchema objectSchema
+            subSchema formats objectSchema
 
 
-subSchema : SubSchema -> Validation ValidationError Value
-subSchema schema =
+subSchema : Formats -> SubSchema -> Validation ValidationError Value
+subSchema formats schema =
     case schema.type_ of
         AnyType ->
             oneOf
-                [ singleType schema IntegerType
-                , singleType schema NumberType
-                , singleType schema StringType
-                , singleType schema BooleanType
-                , singleType schema ArrayType
-                , singleType schema ObjectType
-                , singleType schema NullType
+                [ singleType formats schema IntegerType
+                , singleType formats schema NumberType
+                , singleType formats schema StringType
+                , singleType formats schema BooleanType
+                , singleType formats schema ArrayType
+                , singleType formats schema ObjectType
+                , singleType formats schema NullType
                 ]
 
         NullableType type_ ->
             oneOf
-                [ singleType schema type_
+                [ singleType formats schema type_
                 , emptyString |> andThen (\_ -> succeed EmptyValue)
                 ]
 
         UnionType types ->
-            oneOf (List.map (singleType schema) types)
+            oneOf (List.map (singleType formats schema) types)
 
         SingleType type_ ->
-            singleType schema type_
+            singleType formats schema type_
 
 
-singleType : SubSchema -> SingleType -> Validation ValidationError Value
-singleType schema type_ =
+singleType : Formats -> SubSchema -> SingleType -> Validation ValidationError Value
+singleType formats schema type_ =
     case type_ of
         IntegerType ->
             int
@@ -90,7 +101,7 @@ singleType schema type_ =
                 |> andMaybe maxLength schema.maxLength
                 |> andMaybe pattern schema.pattern
                 |> andMaybe enumString schema.enum
-                |> andMaybe customFormat schema.format
+                |> andMaybe (customFormat formats) schema.format
                 |> map StringValue
 
         BooleanType ->
@@ -105,14 +116,14 @@ singleType schema type_ =
                         |> map ListValue
 
                 ItemDefinition schema_ ->
-                    list (validation schema_)
+                    list (validation formats schema_)
                         |> andMaybe uniqueItems schema.uniqueItems
                         |> andMaybe minItems schema.minItems
                         |> andMaybe maxItems schema.maxItems
                         |> map ListValue
 
                 ArrayOfItems schemaList ->
-                    tuple (List.map validation schemaList)
+                    tuple (List.map (validation formats) schemaList)
                         |> andMaybe uniqueItems schema.uniqueItems
                         |> andMaybe minItems schema.minItems
                         |> andMaybe maxItems schema.maxItems
@@ -121,7 +132,7 @@ singleType schema type_ =
         ObjectType ->
             let
                 schemataItem ( name, schema_ ) =
-                    field name (validation schema_)
+                    field name (validation formats schema_)
                         |> andThen (\v -> succeed ( name, v ))
 
                 fields =
@@ -253,8 +264,8 @@ enum encode constValues value =
         fail (Form.Error.value NotIncludedIn)
 
 
-customFormat : String -> String -> Validation ValidationError String
-customFormat formatId value =
+customFormat : Formats -> String -> String -> Validation ValidationError String
+customFormat formats formatId value =
     case formatId of
         "date-time" ->
             format Schema.Format.dateTime value
@@ -277,8 +288,17 @@ customFormat formatId value =
         "ipv6" ->
             format Schema.Format.ipv6 value
 
-        _ ->
-            succeed value
+        format ->
+            Dict.fromList formats
+                |> Dict.get format
+                |> Maybe.map .validation
+                |> Maybe.map
+                    (\v ->
+                        v value
+                            |> withCustomError
+                                (InvalidCustomFormat format)
+                    )
+                |> Maybe.withDefault (succeed value)
 
 
 uniqueItems : Bool -> List Value -> Validation ValidationError (List Value)
@@ -338,3 +358,8 @@ andMaybe func constraint =
 
         Nothing ->
             andThen (\value -> succeed value)
+
+
+getFormat : String -> Formats -> Maybe CustomFormat
+getFormat format formats =
+    formats |> Dict.fromList |> Dict.get format

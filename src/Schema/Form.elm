@@ -1,5 +1,6 @@
 module Schema.Form exposing (Form, Options, schemaView)
 
+import Dict
 import Form as F
 import Form.Error exposing (ErrorValue(..))
 import Form.Input as Input
@@ -20,12 +21,14 @@ import Json.Schema.Definitions
         , blankSchema
         )
 import Schema.Error exposing (Errors, ValidationError)
-import Schema.Validation exposing (validation)
+import Schema.Validation exposing (Formats, getFormat, validation)
 import Schema.Value exposing (Value(..))
 
 
 type alias Options =
-    { errors : Errors ValidationError }
+    { errors : Errors ValidationError
+    , formats : Formats
+    }
 
 
 type alias Form =
@@ -152,7 +155,22 @@ txt options schema f =
         schema
         f
         [ fieldTitle schema
-        , Input.textInput f (attributes ++ placeholders)
+        , case schema.format of
+            Just "email" ->
+                Input.textInput f
+                    (attributes ++ placeholders ++ [ type_ "email" ])
+
+            Just format ->
+                case getFormat format options.formats |> Maybe.andThen .title of
+                    Just title ->
+                        inputGroup title
+                            [ Input.textInput f (attributes ++ placeholders) ]
+
+                    _ ->
+                        Input.textInput f (attributes ++ placeholders)
+
+            Nothing ->
+                Input.textInput f (attributes ++ placeholders)
         ]
 
 
@@ -398,6 +416,21 @@ liveError func f =
                     ]
                     [ text (func f.path err) ]
             )
+
+
+inputGroup : String -> List (Html F.Msg) -> Html F.Msg
+inputGroup title content =
+    div
+        [ class "input-group" ]
+        ([ div
+            [ class "input-group-prepend" ]
+            [ div
+                [ class "input-group-text" ]
+                [ text title ]
+            ]
+         ]
+            ++ content
+        )
 
 
 getFieldAsBool : Path -> F.Form e o -> F.FieldState e Bool

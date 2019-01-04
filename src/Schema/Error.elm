@@ -9,6 +9,7 @@ type ValidationError
     | InvalidSet
     | ShorterListThan Int
     | LongerListThan Int
+    | InvalidCustomFormat String
 
 
 type alias Errors e =
