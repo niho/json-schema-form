@@ -148,6 +148,16 @@ schema =
         |> withTitle "My object"
         |> withDescription "This is an example form."
         |> withType "object"
+        |> withRequired
+            [ "name"
+            , "numbers"
+            , "color"
+            , "address"
+            , "airports"
+            , "social"
+            , "contact"
+            , "terms"
+            ]
         |> withProperties
             [ ( "name"
               , buildSchema
@@ -272,6 +282,7 @@ schema =
                                 |> withItem
                                     (buildSchema
                                         |> withType "object"
+                                        |> withRequired [ "name", "email" ]
                                         |> withProperties
                                             [ ( "name"
                                               , buildSchema
@@ -294,6 +305,7 @@ schema =
                     |> withType "object"
                     |> withTitle "Contact details"
                     |> withDescription "Please enter your contact details."
+                    |> withRequired [ "email" ]
                     |> withProperties
                         [ ( "email"
                           , buildSchema

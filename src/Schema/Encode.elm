@@ -25,9 +25,16 @@ encode value =
         ObjectValue objectValue ->
             let
                 item ( name, val ) =
-                    ( name, encode val )
+                    if val == EmptyValue then
+                        Nothing
+
+                    else
+                        Just ( name, encode val )
             in
-            object (List.map item objectValue)
+            object (List.filterMap item objectValue)
+
+        NullValue ->
+            null
 
         EmptyValue ->
-            null
+            object []

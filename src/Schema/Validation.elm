@@ -64,7 +64,7 @@ subSchema formats schema =
         NullableType type_ ->
             oneOf
                 [ singleType formats schema type_
-                , emptyString |> andThen (\_ -> succeed EmptyValue)
+                , emptyString |> andThen (\_ -> succeed NullValue)
                 ]
 
         UnionType types ->
@@ -131,9 +131,24 @@ singleType formats schema type_ =
 
         ObjectType ->
             let
+                required =
+                    schema.required |> Maybe.withDefault []
+
+                isSpecialType =
+                    isType [ BooleanType, ArrayType, ObjectType ]
+
                 schemataItem ( name, schema_ ) =
-                    field name (validation formats schema_)
-                        |> andThen (\v -> succeed ( name, v ))
+                    if List.member name required || isSpecialType schema_ then
+                        field name (validation formats schema_)
+                            |> andThen (\v -> succeed ( name, v ))
+
+                    else
+                        oneOf
+                            [ field name emptyString
+                                |> andThen (\_ -> succeed ( name, EmptyValue ))
+                            , field name (validation formats schema_)
+                                |> andThen (\v -> succeed ( name, v ))
+                            ]
 
                 fields =
                     case schema.properties of
@@ -146,7 +161,7 @@ singleType formats schema type_ =
             sequence fields |> map ObjectValue
 
         NullType ->
-            emptyString |> andThen (\_ -> succeed EmptyValue)
+            emptyString |> andThen (\_ -> succeed NullValue)
 
 
 constInt : Json.Encode.Value -> Int -> Validation ValidationError Int
@@ -347,6 +362,16 @@ tuple validations =
         |> sequence
 
 
+
+-- required : String -> List String -> Value -> Validation ValidationError Value
+-- required name fields value =
+--     if List.member name fields then
+--         \f -> Ok (Result.withDefault EmptyValue (validation validationField))
+--
+--     else
+--         succeed value
+
+
 andMaybe :
     (a -> b -> Validation ValidationError b)
     -> Maybe a
@@ -363,3 +388,28 @@ andMaybe func constraint =
 getFormat : String -> Formats -> Maybe CustomFormat
 getFormat format formats =
     formats |> Dict.fromList |> Dict.get format
+
+
+isType : List SingleType -> Schema -> Bool
+isType types schema_ =
+    List.any
+        (\t ->
+            case schema_ of
+                ObjectSchema s ->
+                    case s.type_ of
+                        AnyType ->
+                            BooleanType == t
+
+                        NullableType type_ ->
+                            type_ == t
+
+                        UnionType _ ->
+                            StringType == t
+
+                        SingleType type_ ->
+                            type_ == t
+
+                _ ->
+                    False
+        )
+        types

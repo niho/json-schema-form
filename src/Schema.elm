@@ -45,7 +45,7 @@ update msg state =
                 msg
                 state.form
     in
-    { state | form = form }
+    { state | form = Debug.log "form" form }
 
 
 view : State -> Html Msg

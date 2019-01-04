@@ -8,4 +8,5 @@ type Value
     | BoolValue Bool
     | ListValue (List Value)
     | ObjectValue (List ( String, Value ))
+    | NullValue
     | EmptyValue
