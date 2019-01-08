@@ -26,12 +26,9 @@ See the [example project](https://github.com/niho/json-schema-form/tree/master/e
 module Main exposing (main)
 
 import Browser
-import Form exposing (Msg(..))
 import Html exposing (..)
-import Json.Encode exposing (bool, float, int, list, string)
 import Json.Schema
 import Json.Schema.Form exposing (Msg, State, onSubmit)
-import Regex
 
 
 main : Program () State Msg
