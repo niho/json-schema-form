@@ -14,6 +14,7 @@ import Json.Schema.Definitions
         , SingleType(..)
         , SubSchema
         , Type(..)
+        , blankSchema
         )
 import Regex
 import Schema.Encode
@@ -38,7 +39,7 @@ validation formats schema =
     case schema of
         BooleanSchema bool ->
             if bool then
-                succeed EmptyValue
+                validation formats blankSchema
 
             else
                 fail (customError Invalid)
@@ -55,10 +56,35 @@ subSchema formats schema =
                 [ singleType formats schema IntegerType
                 , singleType formats schema NumberType
                 , singleType formats schema StringType
-                , singleType formats schema BooleanType
-                , singleType formats schema ArrayType
                 , singleType formats schema ObjectType
-                , singleType formats schema NullType
+                    |> andThen
+                        (\a ->
+                            case a of
+                                ObjectValue fields ->
+                                    if List.isEmpty fields then
+                                        fail (customError Invalid)
+
+                                    else
+                                        succeed a
+
+                                _ ->
+                                    fail (customError Invalid)
+                        )
+                , singleType formats schema ArrayType
+                    |> andThen
+                        (\a ->
+                            case a of
+                                ListValue items ->
+                                    if List.isEmpty items then
+                                        fail (customError Invalid)
+
+                                    else
+                                        succeed a
+
+                                _ ->
+                                    fail (customError Invalid)
+                        )
+                , singleType formats schema BooleanType
                 ]
 
         NullableType type_ ->
@@ -112,7 +138,7 @@ singleType formats schema type_ =
         ArrayType ->
             case schema.items of
                 NoItems ->
-                    list (fail (customError Invalid))
+                    list (lazy (\_ -> validation formats blankSchema))
                         |> map ListValue
 
                 ItemDefinition schema_ ->
@@ -153,7 +179,9 @@ singleType formats schema type_ =
                 fields =
                     case schema.properties of
                         Nothing ->
-                            []
+                            required
+                                |> List.map (\name -> ( name, blankSchema ))
+                                |> List.map schemataItem
 
                         Just (Json.Schema.Definitions.Schemata schemata) ->
                             List.map schemataItem schemata
@@ -362,16 +390,6 @@ tuple validations =
         |> sequence
 
 
-
--- required : String -> List String -> Value -> Validation ValidationError Value
--- required name fields value =
---     if List.member name fields then
---         \f -> Ok (Result.withDefault EmptyValue (validation validationField))
---
---     else
---         succeed value
-
-
 andMaybe :
     (a -> b -> Validation ValidationError b)
     -> Maybe a
@@ -413,3 +431,8 @@ isType types schema_ =
                     False
         )
         types
+
+
+lazy : (() -> Validation e o) -> Validation e o
+lazy thunk =
+    andThen thunk (succeed ())
