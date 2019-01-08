@@ -1,9 +1,20 @@
 module Json.Schema.Form.Encode exposing (encode)
 
+{-| Encode form values as JSON.
+
+
+# Encode
+
+@docs encode
+
+-}
+
 import Json.Encode exposing (..)
 import Json.Schema.Form.Value exposing (Value(..))
 
 
+{-| Encode a form value (the output of a valid form) as JSON.
+-}
 encode : Value -> Json.Encode.Value
 encode value =
     case value of
