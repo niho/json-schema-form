@@ -1,10 +1,10 @@
-module Schema.Encode exposing (encode)
+module Json.Schema.Form.Encode exposing (encode)
 
 import Json.Encode exposing (..)
-import Schema.Value exposing (Value(..))
+import Json.Schema.Form.Value exposing (Value(..))
 
 
-encode : Schema.Value.Value -> Json.Encode.Value
+encode : Value -> Json.Encode.Value
 encode value =
     case value of
         IntValue intValue ->

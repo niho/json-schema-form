@@ -6,47 +6,51 @@ import Form.Error exposing (ErrorValue(..))
 import Form.Validate
 import Html exposing (..)
 import Html.Attributes exposing (class)
-import Html.Events exposing (..)
 import Json.Encode exposing (bool, float, int, list, string)
+import Json.Schema
 import Json.Schema.Builder exposing (..)
 import Json.Schema.Definitions
+import Json.Schema.Form exposing (Msg, State, onSubmit)
+import Json.Schema.Form.Encode
+import Json.Schema.Form.Error exposing (ErrorValue(..), Errors)
+import Json.Schema.Form.Format exposing (Formats)
 import Regex
-import Schema
-import Schema.Encode
-import Schema.Error exposing (ValidationError(..))
-import Schema.Validation exposing (Formats)
 
 
-main : Program () Schema.State Schema.Msg
+main : Program () State Msg
 main =
     Browser.sandbox { init = init, update = update, view = view }
 
 
-init : Schema.State
+init : State
 init =
     case schema of
         Ok schema_ ->
-            Schema.init { errors = errorString, formats = formats } schema_
+            Json.Schema.Form.init
+                { errors = errorString
+                , formats = formats
+                }
+                schema_
 
         Err error ->
             Debug.todo error
 
 
-update : Schema.Msg -> Schema.State -> Schema.State
+update : Msg -> State -> State
 update msg state =
-    Schema.update msg state
+    Json.Schema.Form.update msg state
 
 
-view : Schema.State -> Html Schema.Msg
+view : State -> Html Msg
 view state =
-    form [ onSubmit Form.Submit ]
-        [ Schema.view state
+    form [ onSubmit ]
+        [ Json.Schema.Form.view state
         , button [ class "btn btn-primary" ] [ text "Submit" ]
         , case Form.getOutput state.form of
             Just output ->
                 let
                     json =
-                        Json.Encode.encode 4 (Schema.Encode.encode output)
+                        Json.Encode.encode 4 (Json.Schema.Form.Encode.encode output)
                 in
                 pre [] [ text json ]
 
@@ -55,7 +59,7 @@ view state =
         ]
 
 
-errorString : Schema.Errors
+errorString : Errors
 errorString path error =
     case error of
         Empty ->

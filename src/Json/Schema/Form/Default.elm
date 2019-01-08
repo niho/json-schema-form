@@ -1,4 +1,4 @@
-module Schema.Default exposing (default)
+module Json.Schema.Form.Default exposing (default)
 
 import Form.Field exposing (..)
 import Json.Decode

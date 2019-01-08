@@ -1,4 +1,4 @@
-module Schema.Value exposing (Value(..))
+module Json.Schema.Form.Value exposing (Value(..))
 
 
 type Value

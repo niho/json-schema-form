@@ -1,4 +1,4 @@
-module Schema.Format exposing
+module Json.Schema.Form.Regex exposing
     ( date
     , dateTime
     , email

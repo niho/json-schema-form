@@ -1,4 +1,4 @@
-module Schema.Validation exposing (Formats, getFormat, validation)
+module Json.Schema.Form.Validation exposing (validation)
 
 import Dict
 import Form.Error exposing (ErrorValue(..))
@@ -16,25 +16,16 @@ import Json.Schema.Definitions
         , Type(..)
         , blankSchema
         )
+import Json.Schema.Form.Encode
+import Json.Schema.Form.Error exposing (ErrorValue(..))
+import Json.Schema.Form.Format exposing (Formats)
+import Json.Schema.Form.Regex
+import Json.Schema.Form.Value exposing (Value(..))
 import Regex
-import Schema.Encode
-import Schema.Error exposing (ValidationError(..))
-import Schema.Format
-import Schema.Value exposing (Value(..))
 import Set
 
 
-type alias Formats =
-    List ( String, CustomFormat )
-
-
-type alias CustomFormat =
-    { title : Maybe String
-    , validation : String -> Validation ValidationError String
-    }
-
-
-validation : Formats -> Schema -> Validation ValidationError Value
+validation : Formats -> Schema -> Validation ErrorValue Value
 validation formats schema =
     case schema of
         BooleanSchema bool ->
@@ -48,7 +39,7 @@ validation formats schema =
             subSchema formats objectSchema
 
 
-subSchema : Formats -> SubSchema -> Validation ValidationError Value
+subSchema : Formats -> SubSchema -> Validation ErrorValue Value
 subSchema formats schema =
     case schema.type_ of
         AnyType ->
@@ -100,7 +91,7 @@ subSchema formats schema =
             singleType formats schema type_
 
 
-singleType : Formats -> SubSchema -> SingleType -> Validation ValidationError Value
+singleType : Formats -> SubSchema -> SingleType -> Validation ErrorValue Value
 singleType formats schema type_ =
     case type_ of
         IntegerType ->
@@ -192,7 +183,7 @@ singleType formats schema type_ =
             emptyString |> andThen (\_ -> succeed NullValue)
 
 
-constInt : Json.Encode.Value -> Int -> Validation ValidationError Int
+constInt : Json.Encode.Value -> Int -> Validation ErrorValue Int
 constInt constValue value =
     if Json.Encode.int value == constValue then
         succeed value
@@ -201,7 +192,7 @@ constInt constValue value =
         fail (Form.Error.value InvalidInt)
 
 
-constFloat : Json.Encode.Value -> Float -> Validation ValidationError Float
+constFloat : Json.Encode.Value -> Float -> Validation ErrorValue Float
 constFloat constValue value =
     if Json.Encode.float value == constValue then
         succeed value
@@ -210,7 +201,7 @@ constFloat constValue value =
         fail (Form.Error.value InvalidFloat)
 
 
-constString : Json.Encode.Value -> String -> Validation ValidationError String
+constString : Json.Encode.Value -> String -> Validation ErrorValue String
 constString constValue value =
     if Json.Encode.string value == constValue then
         succeed value
@@ -219,7 +210,7 @@ constString constValue value =
         fail (Form.Error.value InvalidString)
 
 
-constBool : Json.Encode.Value -> Bool -> Validation ValidationError Bool
+constBool : Json.Encode.Value -> Bool -> Validation ErrorValue Bool
 constBool constValue value =
     if Json.Encode.bool value == constValue then
         succeed value
@@ -279,17 +270,17 @@ maximum schema =
             schema.maximum
 
 
-enumInt : List Json.Encode.Value -> Int -> Validation ValidationError Int
+enumInt : List Json.Encode.Value -> Int -> Validation ErrorValue Int
 enumInt =
     enum Json.Encode.int
 
 
-enumFloat : List Json.Encode.Value -> Float -> Validation ValidationError Float
+enumFloat : List Json.Encode.Value -> Float -> Validation ErrorValue Float
 enumFloat =
     enum Json.Encode.float
 
 
-enumString : List Json.Encode.Value -> String -> Validation ValidationError String
+enumString : List Json.Encode.Value -> String -> Validation ErrorValue String
 enumString =
     enum Json.Encode.string
 
@@ -298,7 +289,7 @@ enum :
     (a -> Json.Encode.Value)
     -> List Json.Encode.Value
     -> a
-    -> Validation ValidationError a
+    -> Validation ErrorValue a
 enum encode constValues value =
     if List.member (encode value) constValues then
         succeed value
@@ -307,29 +298,29 @@ enum encode constValues value =
         fail (Form.Error.value NotIncludedIn)
 
 
-customFormat : Formats -> String -> String -> Validation ValidationError String
+customFormat : Formats -> String -> String -> Validation ErrorValue String
 customFormat formats formatId value =
     case formatId of
         "date-time" ->
-            format Schema.Format.dateTime value
+            format Json.Schema.Form.Regex.dateTime value
 
         "date" ->
-            format Schema.Format.date value
+            format Json.Schema.Form.Regex.date value
 
         "time" ->
-            format Schema.Format.time value
+            format Json.Schema.Form.Regex.time value
 
         "email" ->
-            format Schema.Format.email value
+            format Json.Schema.Form.Regex.email value
 
         "hostname" ->
-            format Schema.Format.hostname value
+            format Json.Schema.Form.Regex.hostname value
 
         "ipv4" ->
-            format Schema.Format.ipv4 value
+            format Json.Schema.Form.Regex.ipv4 value
 
         "ipv6" ->
-            format Schema.Format.ipv6 value
+            format Json.Schema.Form.Regex.ipv6 value
 
         format ->
             Dict.fromList formats
@@ -344,11 +335,11 @@ customFormat formats formatId value =
                 |> Maybe.withDefault (succeed value)
 
 
-uniqueItems : Bool -> List Value -> Validation ValidationError (List Value)
+uniqueItems : Bool -> List Value -> Validation ErrorValue (List Value)
 uniqueItems unique value =
     let
         items =
-            List.map Schema.Encode.encode value
+            List.map Json.Schema.Form.Encode.encode value
                 |> List.map (Json.Encode.encode 0)
     in
     if unique then
@@ -362,7 +353,7 @@ uniqueItems unique value =
         succeed value
 
 
-minItems : Int -> List a -> Validation ValidationError (List a)
+minItems : Int -> List a -> Validation ErrorValue (List a)
 minItems count list =
     if List.length list >= count then
         succeed list
@@ -371,7 +362,7 @@ minItems count list =
         fail (customError (ShorterListThan count))
 
 
-maxItems : Int -> List a -> Validation ValidationError (List a)
+maxItems : Int -> List a -> Validation ErrorValue (List a)
 maxItems count list =
     if List.length list <= count then
         succeed list
@@ -380,7 +371,7 @@ maxItems count list =
         fail (customError (LongerListThan count))
 
 
-tuple : List (Validation ValidationError a) -> Validation ValidationError (List a)
+tuple : List (Validation ErrorValue a) -> Validation ErrorValue (List a)
 tuple validations =
     let
         item idx =
@@ -391,9 +382,9 @@ tuple validations =
 
 
 andMaybe :
-    (a -> b -> Validation ValidationError b)
+    (a -> b -> Validation ErrorValue b)
     -> Maybe a
-    -> (Validation ValidationError b -> Validation ValidationError b)
+    -> (Validation ErrorValue b -> Validation ErrorValue b)
 andMaybe func constraint =
     case constraint of
         Just constraintValue ->
@@ -401,11 +392,6 @@ andMaybe func constraint =
 
         Nothing ->
             andThen (\value -> succeed value)
-
-
-getFormat : String -> Formats -> Maybe CustomFormat
-getFormat format formats =
-    formats |> Dict.fromList |> Dict.get format
 
 
 isType : List SingleType -> Schema -> Bool

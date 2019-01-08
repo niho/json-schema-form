@@ -1,4 +1,4 @@
-module Schema.Form exposing (Form, Options, schemaView)
+module Json.Schema.Form.Fields exposing (schemaView)
 
 import Dict
 import Form as F
@@ -20,19 +20,20 @@ import Json.Schema.Definitions
         , Type(..)
         , blankSchema
         )
-import Schema.Error exposing (Errors, ValidationError)
-import Schema.Validation exposing (Formats, getFormat, validation)
-import Schema.Value exposing (Value(..))
+import Json.Schema.Form.Error exposing (ErrorValue, Errors)
+import Json.Schema.Form.Format exposing (Formats, getFormat)
+import Json.Schema.Form.Validation exposing (validation)
+import Json.Schema.Form.Value exposing (Value(..))
 
 
 type alias Options =
-    { errors : Errors ValidationError
+    { errors : Errors
     , formats : Formats
     }
 
 
 type alias Form =
-    F.Form ValidationError Value
+    F.Form ErrorValue Value
 
 
 type alias Path =
@@ -128,7 +129,7 @@ fieldView options path schema type_ form =
                 []
 
 
-txt : Options -> SubSchema -> F.FieldState ValidationError String -> Html F.Msg
+txt : Options -> SubSchema -> F.FieldState ErrorValue String -> Html F.Msg
 txt options schema f =
     let
         attributes =
@@ -174,7 +175,7 @@ txt options schema f =
         ]
 
 
-checkbox : Options -> SubSchema -> F.FieldState ValidationError Bool -> Html F.Msg
+checkbox : Options -> SubSchema -> F.FieldState ErrorValue Bool -> Html F.Msg
 checkbox options schema f =
     div
         [ classList
@@ -203,7 +204,7 @@ checkbox options schema f =
         ]
 
 
-select : Options -> SubSchema -> F.FieldState ValidationError String -> Html F.Msg
+select : Options -> SubSchema -> F.FieldState ErrorValue String -> Html F.Msg
 select options schema f =
     let
         schemata =
@@ -345,7 +346,7 @@ tuple options path form schemata =
     [ div [ class "form-row" ] (List.indexedMap itemView schemata) ]
 
 
-field : Options -> SubSchema -> F.FieldState ValidationError String -> List (Html F.Msg) -> Html F.Msg
+field : Options -> SubSchema -> F.FieldState ErrorValue String -> List (Html F.Msg) -> Html F.Msg
 field options schema f content =
     let
         meta =
@@ -368,7 +369,7 @@ field options schema f content =
         ]
 
 
-group : Options -> SubSchema -> F.FieldState ValidationError String -> List (Html F.Msg) -> Html F.Msg
+group : Options -> SubSchema -> F.FieldState ErrorValue String -> List (Html F.Msg) -> Html F.Msg
 group options schema f content =
     let
         meta =
@@ -405,7 +406,7 @@ fieldDescription str =
     div [ class "form-text text-muted" ] [ text str ]
 
 
-liveError : Errors ValidationError -> F.FieldState ValidationError a -> Maybe (Html F.Msg)
+liveError : Errors -> F.FieldState ErrorValue a -> Maybe (Html F.Msg)
 liveError func f =
     f.liveError
         |> Maybe.map
