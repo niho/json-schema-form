@@ -3,13 +3,13 @@
     "name": "niho/json-schema-form",
     "summary": "Generate validating forms from JSON schemas.",
     "license": "MIT",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "exposed-modules": [
-      "Json.Schema.Form",
-      "Json.Schema.Form.Encode",
-      "Json.Schema.Form.Error",
-      "Json.Schema.Form.Format",
-      "Json.Schema.Form.Value"
+        "Json.Schema.Form",
+        "Json.Schema.Form.Encode",
+        "Json.Schema.Form.Error",
+        "Json.Schema.Form.Format",
+        "Json.Schema.Form.Value"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",
     "dependencies": {
