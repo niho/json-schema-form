@@ -1,7 +1,7 @@
 module Json.Schema.Form exposing
     ( Options, State, Msg
     , init, update
-    , view, onSubmit
+    , view, submit
     , getOutput
     )
 
@@ -20,7 +20,12 @@ module Json.Schema.Form exposing
 
 # View
 
-@docs view, onSubmit
+@docs view, submit
+
+
+# Output
+
+@docs getOutput
 
 -}
 
@@ -86,7 +91,7 @@ update msg state =
     { state | form = form }
 
 
-{-| The form fields as HTML. Use together with `onSubmit` to submit the form.
+{-| The form fields as HTML. Use together with `submit` to submit the form.
 -}
 view : State -> Html Msg
 view state =
@@ -95,15 +100,15 @@ view state =
 
 {-| Triggers the form to be submitted for validation.
 
-    form [ Json.Schema.Form.onSubmit ]
+    form [ onSubmit Json.Schema.Form.submit ]
         [ Json.Schema.Form.view state
         , button [] [ text "Submit" ]
         ]
 
 -}
-onSubmit : Attribute Msg
-onSubmit =
-    Html.Events.onSubmit F.Submit
+submit : Msg
+submit =
+    F.Submit
 
 
 {-| Get the output value of the form if it validates.

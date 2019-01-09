@@ -6,11 +6,12 @@ import Form.Error exposing (ErrorValue(..))
 import Form.Validate
 import Html exposing (..)
 import Html.Attributes exposing (class)
+import Html.Events exposing (onSubmit)
 import Json.Encode exposing (bool, float, int, list, string)
 import Json.Schema
 import Json.Schema.Builder exposing (..)
 import Json.Schema.Definitions
-import Json.Schema.Form exposing (Msg, State, onSubmit)
+import Json.Schema.Form exposing (Msg, State)
 import Json.Schema.Form.Encode
 import Json.Schema.Form.Error exposing (ErrorValue(..), Errors)
 import Json.Schema.Form.Format exposing (Formats)
@@ -43,7 +44,7 @@ update msg state =
 
 view : State -> Html Msg
 view state =
-    form [ onSubmit ]
+    form [ onSubmit Json.Schema.Form.submit ]
         [ Json.Schema.Form.view state
         , button [ class "btn btn-primary" ] [ text "Submit" ]
         , case Form.getOutput state.form of

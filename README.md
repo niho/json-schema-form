@@ -28,8 +28,9 @@ module Main exposing (main)
 
 import Browser
 import Html exposing (..)
+import Html.Events exposing (onSubmit)
 import Json.Schema
-import Json.Schema.Form exposing (Msg, State, onSubmit)
+import Json.Schema.Form exposing (Msg, State)
 
 
 main : Program () State Msg
@@ -73,7 +74,7 @@ update msg state =
 
 view : State -> Html Msg
 view state =
-    form [ onSubmit ]
+    form [ onSubmit Json.Schema.Form.submit ]
         [ Json.Schema.Form.view state
         , button [] [ text "Submit" ]
         ]
