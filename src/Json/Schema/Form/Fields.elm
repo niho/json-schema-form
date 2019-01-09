@@ -21,7 +21,7 @@ import Json.Schema.Definitions
         , blankSchema
         )
 import Json.Schema.Form.Error exposing (ErrorValue, Errors)
-import Json.Schema.Form.Format exposing (Formats, getFormat)
+import Json.Schema.Form.Format exposing (CustomFormat, Formats)
 import Json.Schema.Form.Validation exposing (validation)
 import Json.Schema.Form.Value exposing (Value(..))
 
@@ -485,3 +485,8 @@ conditional f conditions =
                 Nothing
     in
     Html.Keyed.node "div" [] <| List.filterMap cond conditions
+
+
+getFormat : String -> Formats -> Maybe CustomFormat
+getFormat format formats =
+    formats |> Dict.fromList |> Dict.get format

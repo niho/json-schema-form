@@ -4,14 +4,14 @@ import Expect exposing (Expectation)
 import Form.Field exposing (..)
 import Json.Schema.Builder exposing (..)
 import Json.Schema.Definitions exposing (..)
-import Schema.Validation exposing (validation)
-import Schema.Value exposing (Value(..))
+import Json.Schema.Form.Validation exposing (validation)
+import Json.Schema.Form.Value exposing (Value(..))
 import Test exposing (..)
 
 
 suite : Test
 suite =
-    describe "Schema.Validation"
+    describe "Json.Schema.Form.Validation"
         [ describe "validation"
             [ describe "with a blank schema"
                 [ describe "any type of input"

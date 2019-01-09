@@ -18,7 +18,7 @@ import Json.Schema.Definitions
         )
 import Json.Schema.Form.Encode
 import Json.Schema.Form.Error exposing (ErrorValue(..))
-import Json.Schema.Form.Format exposing (Formats)
+import Json.Schema.Form.Format exposing (CustomFormat, Formats)
 import Json.Schema.Form.Regex
 import Json.Schema.Form.Value exposing (Value(..))
 import Regex
@@ -422,3 +422,8 @@ isType types schema_ =
 lazy : (() -> Validation e o) -> Validation e o
 lazy thunk =
     andThen thunk (succeed ())
+
+
+getFormat : String -> Formats -> Maybe CustomFormat
+getFormat format formats =
+    formats |> Dict.fromList |> Dict.get format

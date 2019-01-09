@@ -16,6 +16,7 @@ Generate validating forms from JSON schemas.
 
 1. The way form fields are generated and presented is very opinionated and thus not always suitable for general case usage. This library is intended to be used for cases where you have control over how the schema is structured.
 2. The HTML that the library outputs is intended to be used together with [Bootstrap](https://getbootstrap.com/) to style the form. It can of course be used without Bootstrap but some field types might need some custom styling to look ok.
+3. There is currently no support for linked schemas using `$ref`.
 
 
 ## Example usage
