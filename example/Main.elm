@@ -190,6 +190,48 @@ schema =
                             |> withDescription "Enter a natural number between 5.5-10.1 (inclusive)."
                             |> withMinimum 5.5
                             |> withMaximum 10.1
+                        , buildSchema
+                            |> withType "integer"
+                            |> withTitle "Month"
+                            |> withOneOf
+                                [ boolSchema False
+                                , buildSchema
+                                    |> withConst (int 1)
+                                    |> withTitle "Jan"
+                                , buildSchema
+                                    |> withConst (int 2)
+                                    |> withTitle "Feb"
+                                , buildSchema
+                                    |> withConst (int 3)
+                                    |> withTitle "Mar"
+                                , buildSchema
+                                    |> withConst (int 4)
+                                    |> withTitle "Apr"
+                                , buildSchema
+                                    |> withConst (int 5)
+                                    |> withTitle "May"
+                                , buildSchema
+                                    |> withConst (int 6)
+                                    |> withTitle "Jun"
+                                , buildSchema
+                                    |> withConst (int 7)
+                                    |> withTitle "Jul"
+                                , buildSchema
+                                    |> withConst (int 8)
+                                    |> withTitle "Aug"
+                                , buildSchema
+                                    |> withConst (int 9)
+                                    |> withTitle "Sep"
+                                , buildSchema
+                                    |> withConst (int 10)
+                                    |> withTitle "Oct"
+                                , buildSchema
+                                    |> withConst (int 11)
+                                    |> withTitle "Nov"
+                                , buildSchema
+                                    |> withConst (int 12)
+                                    |> withTitle "Dec"
+                                ]
                         ]
               )
             , ( "color"

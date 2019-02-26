@@ -80,10 +80,18 @@ fieldView : Options -> Path -> SubSchema -> SingleType -> Form -> Html F.Msg
 fieldView options path schema type_ form =
     case type_ of
         IntegerType ->
-            txt options schema (getFieldAsString path form)
+            if schema.oneOf /= Nothing || schema.anyOf /= Nothing then
+                select options schema (getFieldAsString path form)
+
+            else
+                txt options schema (getFieldAsString path form)
 
         NumberType ->
-            txt options schema (getFieldAsString path form)
+            if schema.oneOf /= Nothing || schema.anyOf /= Nothing then
+                select options schema (getFieldAsString path form)
+
+            else
+                txt options schema (getFieldAsString path form)
 
         StringType ->
             if schema.oneOf /= Nothing || schema.anyOf /= Nothing then
@@ -534,8 +542,16 @@ fieldPath =
 
 constAsString : SubSchema -> Maybe String
 constAsString schema =
+    let
+        decoder =
+            Json.Decode.oneOf
+                [ Json.Decode.string
+                , Json.Decode.int |> Json.Decode.map String.fromInt
+                , Json.Decode.float |> Json.Decode.map String.fromFloat
+                ]
+    in
     schema.const
-        |> Maybe.map (Json.Decode.decodeValue Json.Decode.string)
+        |> Maybe.map (Json.Decode.decodeValue decoder)
         |> Maybe.andThen Result.toMaybe
 
 

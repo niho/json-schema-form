@@ -114,6 +114,20 @@ singleTypes =
                 buildSchema
                     |> withType "integer"
                     |> isTextField
+        , describe "oneOf"
+            [ test "should be a select" <|
+                \_ ->
+                    buildSchema
+                        |> withType "integer"
+                        |> isNumberSelect
+            ]
+        , describe "anyOf"
+            [ test "should be a select" <|
+                \_ ->
+                    buildSchema
+                        |> withType "integer"
+                        |> isNumberSelect
+            ]
         ]
     , describe "number"
         [ test "should be a text field" <|
@@ -121,6 +135,20 @@ singleTypes =
                 buildSchema
                     |> withType "number"
                     |> isTextField
+        , describe "oneOf"
+            [ test "should be a select" <|
+                \_ ->
+                    buildSchema
+                        |> withType "number"
+                        |> isNumberSelect
+            ]
+        , describe "anyOf"
+            [ test "should be a select" <|
+                \_ ->
+                    buildSchema
+                        |> withType "number"
+                        |> isNumberSelect
+            ]
         ]
     , describe "string"
         [ test "should be a text field" <|
@@ -128,6 +156,20 @@ singleTypes =
                 buildSchema
                     |> withType "string"
                     |> isTextField
+        , describe "oneOf"
+            [ test "should be a select" <|
+                \_ ->
+                    buildSchema
+                        |> withType "string"
+                        |> isSelect
+            ]
+        , describe "anyOf"
+            [ test "should be a select" <|
+                \_ ->
+                    buildSchema
+                        |> withType "string"
+                        |> isSelect
+            ]
         ]
     , describe "boolean"
         [ test "should be a checkbox" <|
@@ -379,10 +421,59 @@ isSelect schema =
                         >> Query.count (Expect.equal 2)
                     , Query.findAll [ tag "option" ]
                         >> Query.index 0
-                        >> Query.has [ text "One" ]
+                        >> Query.has
+                            [ text "One"
+                            , selected False
+                            , attribute
+                                (Html.Attributes.attribute "value" "one")
+                            ]
                     , Query.findAll [ tag "option" ]
                         >> Query.index 1
-                        >> Query.has [ text "Two" ]
+                        >> Query.has
+                            [ text "Two"
+                            , selected False
+                            , attribute
+                                (Html.Attributes.attribute "value" "two")
+                            ]
+                    ]
+                )
+            ]
+
+
+isNumberSelect schema =
+    schema
+        |> withAnyOf
+            [ buildSchema
+                |> withTitle "One"
+                |> withConst (Json.Encode.int 1)
+            , buildSchema
+                |> withTitle "Two"
+                |> withConst (Json.Encode.int 2)
+            ]
+        |> Expect.all
+            [ isField
+            , view
+                (Expect.all
+                    [ Query.find
+                        [ tag "select"
+                        , classes [ "form-control", "custom-select" ]
+                        ]
+                        >> Query.children [ tag "option" ]
+                        >> Query.count (Expect.equal 2)
+                    , Query.findAll [ tag "option" ]
+                        >> Query.index 0
+                        >> Query.has
+                            [ text "One"
+                            , selected False
+                            , attribute (Html.Attributes.attribute "value" "1")
+                            ]
+                    , Query.findAll [ tag "option" ]
+                        >> Query.index 1
+                        >> Query.has
+                            [ text "Two"
+                            , selected False
+                            , attribute (Html.Attributes.attribute "value" "2")
+                            ]
                     ]
                 )
             ]
