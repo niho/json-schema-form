@@ -138,7 +138,7 @@ suite =
 singleTypes =
     [ describe "integer"
         ((buildSchema
-            |> withUnionType [ "integer" ]
+            |> withType "integer"
             |> toSchema
          )
             |> validateMultiple
