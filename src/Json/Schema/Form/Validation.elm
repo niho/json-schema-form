@@ -4,6 +4,7 @@ import Dict
 import Form.Error exposing (ErrorValue(..))
 import Form.Field exposing (Field)
 import Form.Validate exposing (..)
+import Json.Decode
 import Json.Encode
 import Json.Schema.Definitions
     exposing
@@ -202,12 +203,20 @@ constFloat constValue value =
 
 
 constString : Json.Encode.Value -> String -> Validation ErrorValue String
-constString constValue value =
+constString constValue value field =
     if Json.Encode.string value == constValue then
-        succeed value
+        succeed value field
+
+    else if field == Form.Field.value Form.Field.EmptyField then
+        case Json.Decode.decodeValue Json.Decode.string constValue of
+            Ok str ->
+                succeed str field
+
+            Err error ->
+                fail (Form.Error.value InvalidString) field
 
     else
-        fail (Form.Error.value InvalidString)
+        fail (Form.Error.value InvalidString) field
 
 
 constBool : Json.Encode.Value -> Bool -> Validation ErrorValue Bool

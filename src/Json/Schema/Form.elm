@@ -88,7 +88,7 @@ update msg state =
                 msg
                 state.form
     in
-    { state | form = form }
+    { state | form = Debug.log "form" form }
 
 
 {-| The form fields as HTML. Use together with `submit` to submit the form.

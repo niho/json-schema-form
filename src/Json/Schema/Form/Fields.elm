@@ -60,7 +60,11 @@ objectView : Options -> Path -> SubSchema -> Form -> Html F.Msg
 objectView options path schema form =
     case schema.type_ of
         AnyType ->
-            fieldView options path schema BooleanType form
+            if schema.oneOf /= Nothing || schema.anyOf /= Nothing then
+                switch options path schema form
+
+            else
+                fieldView options path schema BooleanType form
 
         NullableType singleType ->
             fieldView options path schema singleType form
@@ -98,35 +102,26 @@ fieldView options path schema type_ form =
             in
             case schema.items of
                 NoItems ->
-                    field options schema f (list options path form ( schema.title, blankSchema ))
+                    field options schema f <|
+                        list options path form ( schema.title, blankSchema )
 
                 ItemDefinition item ->
-                    field options schema f (list options path form ( schema.title, item ))
+                    field options schema f <|
+                        list options path form ( schema.title, item )
 
                 ArrayOfItems items ->
-                    field options schema f (tuple options path form items)
+                    field options schema f <|
+                        tuple options path form ( schema.title, items )
 
         ObjectType ->
-            let
-                f =
-                    getFieldAsString path form
+            if schema.oneOf /= Nothing || schema.anyOf /= Nothing then
+                switch options path schema form
 
-                schemataItem ( name, subSchema ) =
-                    schemaView options (path ++ [ name ]) subSchema form
-
-                fields =
-                    case schema.properties of
-                        Nothing ->
-                            []
-
-                        Just (Json.Schema.Definitions.Schemata schemata) ->
-                            List.map schemataItem schemata
-            in
-            group options schema f fields
+            else
+                fieldset schema [ group options path schema form ]
 
         NullType ->
-            fieldset []
-                []
+            div [] []
 
 
 txt : Options -> SubSchema -> F.FieldState ErrorValue String -> Html F.Msg
@@ -155,7 +150,7 @@ txt options schema f =
     field options
         schema
         f
-        [ fieldTitle schema
+        [ fieldTitle schema |> Maybe.withDefault (text "")
         , case schema.format of
             Just "email" ->
                 Input.textInput f
@@ -194,12 +189,7 @@ checkbox options schema f =
                 ]
             , text (schema.title |> Maybe.withDefault "")
             , liveError options.errors f |> Maybe.withDefault (text "")
-            , case schema.description of
-                Just str ->
-                    fieldDescription str
-
-                Nothing ->
-                    text ""
+            , fieldDescription schema |> Maybe.withDefault (text "")
             ]
         ]
 
@@ -215,7 +205,7 @@ select options schema f =
 
         items =
             schemata
-                |> List.map option
+                |> List.map (option constAsString)
                 |> List.map
                     (\( name, schema_ ) ->
                         ( name
@@ -227,13 +217,12 @@ select options schema f =
 
         descriptions =
             schemata
-                |> List.map option
+                |> List.map (option constAsString)
                 |> List.map
                     (\( name, schema_ ) ->
                         ( name
                         , schema_
-                            |> Maybe.andThen .description
-                            |> Maybe.map fieldDescription
+                            |> Maybe.andThen fieldDescription
                             |> Maybe.withDefault (text "")
                         )
                     )
@@ -241,7 +230,7 @@ select options schema f =
     field options
         schema
         f
-        [ fieldTitle schema
+        [ fieldTitle schema |> Maybe.withDefault (text "")
         , Input.selectInput
             items
             f
@@ -255,14 +244,14 @@ select options schema f =
         ]
 
 
-option : Schema -> ( String, Maybe SubSchema )
-option schema =
+option : (SubSchema -> Maybe String) -> Schema -> ( String, Maybe SubSchema )
+option attr schema =
     case schema of
         BooleanSchema _ ->
             ( "", Nothing )
 
         ObjectSchema schema_ ->
-            ( constAsString schema_ |> Maybe.withDefault ""
+            ( attr schema_ |> Maybe.withDefault ""
             , Just schema_
             )
 
@@ -331,26 +320,89 @@ tuple :
     Options
     -> Path
     -> Form
-    -> List Schema
+    -> ( Maybe String, List Schema )
     -> List (Html F.Msg)
-tuple options path form schemata =
+tuple options path form ( title, schemata ) =
     let
         itemPath idx =
             path ++ [ "tuple" ++ String.fromInt idx ]
 
-        itemView idx schema =
+        itemView idx itemSchema =
             div
                 [ class "col" ]
-                [ schemaView options (itemPath idx) schema form ]
+                [ schemaView options (itemPath idx) itemSchema form ]
     in
-    [ div [ class "form-row" ] (List.indexedMap itemView schemata) ]
+    [ case title of
+        Just str ->
+            div [ class "field-title" ] [ text str ]
+
+        Nothing ->
+            text ""
+    , div [ class "form-row" ] (List.indexedMap itemView schemata)
+    ]
+
+
+radio : F.FieldState ErrorValue String -> ( String, String ) -> Html F.Msg
+radio fieldState ( value, title ) =
+    label [ class "form-check-label" ]
+        [ Input.radioInput value
+            fieldState
+            [ class "form-check-input"
+            , id fieldState.path
+            ]
+        , text title
+        ]
+
+
+switch : Options -> Path -> SubSchema -> Form -> Html F.Msg
+switch options path schema form =
+    let
+        f =
+            getFieldAsString (path ++ [ "switch" ]) form
+
+        schemata =
+            List.concat
+                [ schema.oneOf |> Maybe.withDefault []
+                , schema.anyOf |> Maybe.withDefault []
+                ]
+
+        items =
+            schemata
+                |> List.map (option .title)
+
+        itemId idx =
+            "option" ++ String.fromInt idx
+
+        itemButton idx ( title, schema_ ) =
+            div
+                [ classList
+                    [ ( "form-check", True )
+                    , ( "form-check-inline", List.length items <= 2 )
+                    ]
+                ]
+                [ radio f ( itemId idx, title ) ]
+
+        itemFields idx ( title, schema_ ) =
+            case schema_ of
+                Just s ->
+                    ( itemId idx, group options path s form )
+
+                Nothing ->
+                    ( itemId idx, text "" )
+    in
+    field options schema f <|
+        [ fieldTitle schema |> Maybe.withDefault (text "")
+        , div [ class "form-group", id f.path, tabindex -1 ]
+            (List.indexedMap itemButton items)
+        , conditional f (List.indexedMap itemFields items)
+        ]
 
 
 field : Options -> SubSchema -> F.FieldState ErrorValue String -> List (Html F.Msg) -> Html F.Msg
 field options schema f content =
     let
         meta =
-            [ Maybe.map fieldDescription schema.description ]
+            [ fieldDescription schema ]
                 |> List.filterMap identity
 
         feedback =
@@ -369,12 +421,25 @@ field options schema f content =
         ]
 
 
-group : Options -> SubSchema -> F.FieldState ErrorValue String -> List (Html F.Msg) -> Html F.Msg
-group options schema f content =
+group : Options -> Path -> SubSchema -> Form -> Html F.Msg
+group options path schema form =
     let
+        f =
+            getFieldAsString path form
+
+        schemataItem ( name, subSchema ) =
+            schemaView options (path ++ [ name ]) subSchema form
+
+        fields =
+            case schema.properties of
+                Nothing ->
+                    []
+
+                Just (Json.Schema.Definitions.Schemata schemata) ->
+                    List.map schemataItem schemata
+
         meta =
-            [ Maybe.map (\str -> legend [] [ text str ]) schema.title
-            , Maybe.map (\str -> p [] [ text str ]) schema.description
+            [ Maybe.map (\str -> p [] [ text str ]) schema.description
             ]
                 |> List.filterMap identity
 
@@ -383,27 +448,26 @@ group options schema f content =
             ]
                 |> List.filterMap identity
     in
-    fieldset
-        [ name f.path
-        , id f.path
-        , tabindex -1
+    div
+        [ classList
+            [ ( "form-group", True )
+            , ( "is-invalid", f.liveError /= Nothing )
+            , ( "has-value", f.value /= Nothing && f.value /= Just "" )
+            ]
         ]
-        (meta ++ content ++ feedback)
+        (meta ++ fields ++ feedback)
 
 
-fieldTitle : SubSchema -> Html F.Msg
+fieldTitle : SubSchema -> Maybe (Html F.Msg)
 fieldTitle schema =
-    case schema.title of
-        Just str ->
-            span [ class "label-text" ] [ text str ]
-
-        Nothing ->
-            text ""
+    schema.title
+        |> Maybe.map (\str -> span [ class "label-text" ] [ text str ])
 
 
-fieldDescription : String -> Html F.Msg
-fieldDescription str =
-    div [ class "form-text text-muted" ] [ text str ]
+fieldDescription : SubSchema -> Maybe (Html F.Msg)
+fieldDescription schema =
+    schema.description
+        |> Maybe.map (\str -> div [ class "form-text text-muted" ] [ text str ])
 
 
 liveError : Errors -> F.FieldState ErrorValue a -> Maybe (Html F.Msg)
@@ -432,6 +496,20 @@ inputGroup title content =
          ]
             ++ content
         )
+
+
+fieldset : SubSchema -> List (Html F.Msg) -> Html F.Msg
+fieldset schema content =
+    let
+        title =
+            case schema.title of
+                Just str ->
+                    [ legend [] [ text str ] ]
+
+                Nothing ->
+                    []
+    in
+    Html.fieldset [ tabindex -1 ] (title ++ content)
 
 
 getFieldAsBool : Path -> F.Form e o -> F.FieldState e Bool
