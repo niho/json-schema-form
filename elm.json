@@ -3,7 +3,7 @@
     "name": "niho/json-schema-form",
     "summary": "Generate validating forms from JSON schemas.",
     "license": "MIT",
-    "version": "2.0.0",
+    "version": "3.0.0",
     "exposed-modules": [
         "Json.Schema.Form",
         "Json.Schema.Form.Encode",
