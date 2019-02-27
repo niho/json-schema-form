@@ -6,6 +6,8 @@ module Json.Schema.Form.Value exposing (Value(..))
 
 -}
 
+import Json.Decode
+
 
 {-| A form value.
 -}
@@ -18,3 +20,4 @@ type Value
     | ObjectValue (List ( String, Value ))
     | NullValue
     | EmptyValue
+    | JsonValue Json.Decode.Value

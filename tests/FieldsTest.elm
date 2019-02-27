@@ -210,6 +210,20 @@ singleTypes =
                     |> withType "object"
                     |> withProperties [ ( "test", buildSchema ) ]
                     |> isFieldset
+        , describe "oneOf"
+            [ test "should be a switch" <|
+                \_ ->
+                    buildSchema
+                        |> withType "object"
+                        |> isSwitch
+            ]
+        , describe "anyOf"
+            [ test "should be a switch" <|
+                \_ ->
+                    buildSchema
+                        |> withType "object"
+                        |> isSwitch
+            ]
         ]
     , describe "null"
         [ test "should be an empty div" <|
@@ -385,6 +399,16 @@ isSwitch schema =
                                     >> Query.has
                                         [ class "form-check-input"
                                         , checked False
+                                        , attribute
+                                            (Html.Attributes.attribute
+                                                "name"
+                                                "switch"
+                                            )
+                                        , attribute
+                                            (Html.Attributes.attribute
+                                                "type"
+                                                "radio"
+                                            )
                                         ]
                                 ]
                             )
@@ -394,6 +418,24 @@ isSwitch schema =
                     , Query.findAll [ class "form-check-label" ]
                         >> Query.index 1
                         >> Query.has [ text "Two" ]
+                    , Query.findAll [ class "form-check-input" ]
+                        >> Query.index 0
+                        >> Query.has
+                            [ attribute
+                                (Html.Attributes.attribute
+                                    "value"
+                                    "option0"
+                                )
+                            ]
+                    , Query.findAll [ class "form-check-input" ]
+                        >> Query.index 1
+                        >> Query.has
+                            [ attribute
+                                (Html.Attributes.attribute
+                                    "value"
+                                    "option1"
+                                )
+                            ]
                     ]
                 )
             ]

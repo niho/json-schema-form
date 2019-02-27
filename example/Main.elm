@@ -25,7 +25,7 @@ main =
 
 init : State
 init =
-    case schema of
+    case oneOfSchema of
         Ok schema_ ->
             Json.Schema.Form.init
                 { errors = errorString
@@ -144,6 +144,41 @@ formats =
         }
       )
     ]
+
+
+oneOfSchema =
+    buildSchema
+        |> withTitle "What modes of transportation do you use when you travel?"
+        |> withOneOf
+            [ buildSchema
+                |> withTitle "Walking"
+                |> withType "string"
+                |> withConst (Json.Encode.string "walking")
+            , buildSchema
+                |> withTitle "Driving car"
+                |> withType "string"
+                |> withConst (Json.Encode.string "driving")
+            , buildSchema
+                |> withTitle "Boat"
+                |> withType "string"
+                |> withConst (Json.Encode.string "boat")
+            , buildSchema
+                |> withTitle "Bus"
+                |> withType "string"
+                |> withConst (Json.Encode.string "bus")
+            , buildSchema
+                |> withTitle "Other"
+                |> withType "object"
+                |> withRequired [ "details" ]
+                |> withProperties
+                    [ ( "details"
+                      , buildSchema
+                            |> withType "string"
+                            |> withTitle "Please specify"
+                      )
+                    ]
+            ]
+        |> toSchema
 
 
 schema : Result String Json.Schema.Definitions.Schema
@@ -285,34 +320,58 @@ schema =
                                 ]
                         ]
               )
-            , ( "airports"
+            , ( "travel"
               , buildSchema
-                    |> withTitle "Add airport"
-                    |> withType "array"
-                    |> withDefault (list string [ "LHR", "CDG" ])
-                    |> withUniqueItems True
-                    |> withMinItems 2
-                    |> withItem
-                        (buildSchema
-                            |> withType "string"
-                            |> withAnyOf
-                                [ boolSchema False
-                                , buildSchema
-                                    |> withTitle "Stockholm Arlanda"
-                                    |> withConst (string "ARN")
-                                , buildSchema
-                                    |> withTitle "London Heathrow"
-                                    |> withConst (string "LHR")
-                                    |> withDescription "Heathrow Airport is a major international airport in London, United Kingdom."
-                                , buildSchema
-                                    |> withTitle "Dubai International Airport"
-                                    |> withConst (string "DXB")
-                                , buildSchema
-                                    |> withTitle "Paris Charles de Gaulle"
-                                    |> withDescription "Paris Charles de Gaulle Airport is the largest international airport in France and the second largest in Europe."
-                                    |> withConst (string "CDG")
+                    |> withTitle "What modes of transportation do you use when you travel?"
+                    |> withOneOf
+                        [ buildSchema
+                            |> withTitle "Walking"
+                            |> withConst (Json.Encode.string "walking")
+                        , buildSchema
+                            |> withTitle "Driving car"
+                            |> withConst (Json.Encode.string "driving")
+                        , buildSchema
+                            |> withTitle "Boat"
+                            |> withConst (Json.Encode.string "boat")
+                        , buildSchema
+                            |> withTitle "Bus"
+                            |> withConst (Json.Encode.string "bus")
+                        , buildSchema
+                            |> withTitle "Airplane"
+                            |> withType "object"
+                            |> withRequired [ "airports" ]
+                            |> withProperties
+                                [ ( "airports"
+                                  , buildSchema
+                                        |> withTitle "Add airport"
+                                        |> withType "array"
+                                        |> withDefault (list string [ "LHR", "CDG" ])
+                                        |> withUniqueItems True
+                                        |> withMinItems 2
+                                        |> withItem
+                                            (buildSchema
+                                                |> withType "string"
+                                                |> withAnyOf
+                                                    [ boolSchema False
+                                                    , buildSchema
+                                                        |> withTitle "Stockholm Arlanda"
+                                                        |> withConst (string "ARN")
+                                                    , buildSchema
+                                                        |> withTitle "London Heathrow"
+                                                        |> withConst (string "LHR")
+                                                        |> withDescription "Heathrow Airport is a major international airport in London, United Kingdom."
+                                                    , buildSchema
+                                                        |> withTitle "Dubai International Airport"
+                                                        |> withConst (string "DXB")
+                                                    , buildSchema
+                                                        |> withTitle "Paris Charles de Gaulle"
+                                                        |> withDescription "Paris Charles de Gaulle Airport is the largest international airport in France and the second largest in Europe."
+                                                        |> withConst (string "CDG")
+                                                    ]
+                                            )
+                                  )
                                 ]
-                        )
+                        ]
               )
             , ( "social"
               , buildSchema

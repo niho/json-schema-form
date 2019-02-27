@@ -44,40 +44,45 @@ subSchema : Formats -> SubSchema -> Validation ErrorValue Value
 subSchema formats schema =
     case schema.type_ of
         AnyType ->
-            oneOf
-                [ singleType formats schema IntegerType
-                , singleType formats schema NumberType
-                , singleType formats schema StringType
-                , singleType formats schema ObjectType
-                    |> andThen
-                        (\a ->
-                            case a of
-                                ObjectValue fields ->
-                                    if List.isEmpty fields then
-                                        fail (customError Invalid)
+            case schema.oneOf of
+                Just schemata ->
+                    switch formats schemata
 
-                                    else
-                                        succeed a
+                Nothing ->
+                    oneOf
+                        [ singleType formats schema IntegerType
+                        , singleType formats schema NumberType
+                        , singleType formats schema StringType
+                        , singleType formats schema ObjectType
+                            |> andThen
+                                (\a ->
+                                    case a of
+                                        ObjectValue fields ->
+                                            if List.isEmpty fields then
+                                                fail (customError Invalid)
 
-                                _ ->
-                                    fail (customError Invalid)
-                        )
-                , singleType formats schema ArrayType
-                    |> andThen
-                        (\a ->
-                            case a of
-                                ListValue items ->
-                                    if List.isEmpty items then
-                                        fail (customError Invalid)
+                                            else
+                                                succeed a
 
-                                    else
-                                        succeed a
+                                        _ ->
+                                            fail (customError Invalid)
+                                )
+                        , singleType formats schema ArrayType
+                            |> andThen
+                                (\a ->
+                                    case a of
+                                        ListValue items ->
+                                            if List.isEmpty items then
+                                                fail (customError Invalid)
 
-                                _ ->
-                                    fail (customError Invalid)
-                        )
-                , singleType formats schema BooleanType
-                ]
+                                            else
+                                                succeed a
+
+                                        _ ->
+                                            fail (customError Invalid)
+                                )
+                        , singleType formats schema BooleanType
+                        ]
 
         NullableType type_ ->
             oneOf
@@ -388,6 +393,57 @@ tuple validations =
     in
     List.indexedMap item validations
         |> sequence
+
+
+switch : Formats -> List Schema -> Validation ErrorValue Value
+switch formats schemata =
+    let
+        validateValue schema =
+            case schema of
+                BooleanSchema boolSchema ->
+                    field "value" (validation formats schema)
+
+                ObjectSchema objectSchema ->
+                    case objectSchema.const of
+                        Just const ->
+                            succeed (constAsValue const)
+
+                        Nothing ->
+                            field "value" (validation formats schema)
+    in
+    field "switch" string
+        |> andThen
+            (\str ->
+                schemata
+                    |> List.indexedMap
+                        (\idx schema ->
+                            if str == ("option" ++ String.fromInt idx) then
+                                Just (validateValue schema)
+
+                            else
+                                Nothing
+                        )
+                    |> List.filterMap identity
+                    |> List.head
+                    |> Maybe.withDefault (fail (customError Invalid))
+            )
+
+
+constAsValue : Json.Decode.Value -> Value
+constAsValue const =
+    let
+        decoder =
+            Json.Decode.oneOf
+                [ Json.Decode.string |> Json.Decode.map StringValue
+                , Json.Decode.int |> Json.Decode.map IntValue
+                , Json.Decode.float |> Json.Decode.map FloatValue
+                , Json.Decode.bool |> Json.Decode.map BoolValue
+                , Json.Decode.null NullValue
+                ]
+    in
+    const
+        |> Json.Decode.decodeValue decoder
+        |> Result.withDefault (JsonValue const)
 
 
 andMaybe :

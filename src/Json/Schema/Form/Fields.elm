@@ -393,7 +393,14 @@ switch options path schema form =
         itemFields idx ( title, schema_ ) =
             case schema_ of
                 Just s ->
-                    ( itemId idx, group options path s form )
+                    ( itemId idx
+                    , case s.const of
+                        Just _ ->
+                            text ""
+
+                        Nothing ->
+                            objectView options (path ++ [ "value" ]) s form
+                    )
 
                 Nothing ->
                     ( itemId idx, text "" )

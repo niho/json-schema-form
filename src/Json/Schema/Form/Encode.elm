@@ -49,3 +49,6 @@ encode value =
 
         EmptyValue ->
             object []
+
+        JsonValue jsonValue ->
+            jsonValue
