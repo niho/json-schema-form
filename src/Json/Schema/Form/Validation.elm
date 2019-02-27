@@ -1,6 +1,6 @@
 module Json.Schema.Form.Validation exposing (validation)
 
-import Dict
+import Dict exposing (Dict)
 import Form.Error exposing (ErrorValue(..))
 import Form.Field exposing (Field)
 import Form.Validate exposing (..)
@@ -19,11 +19,15 @@ import Json.Schema.Definitions
         )
 import Json.Schema.Form.Encode
 import Json.Schema.Form.Error exposing (ErrorValue(..))
-import Json.Schema.Form.Format exposing (CustomFormat, Formats)
+import Json.Schema.Form.Format exposing (Format)
 import Json.Schema.Form.Regex
 import Json.Schema.Form.Value exposing (Value(..))
 import Regex
 import Set
+
+
+type alias Formats =
+    Dict String Format
 
 
 validation : Formats -> Schema -> Validation ErrorValue Value
@@ -337,7 +341,7 @@ customFormat formats formatId value =
             format Json.Schema.Form.Regex.ipv6 value
 
         format ->
-            Dict.fromList formats
+            formats
                 |> Dict.get format
                 |> Maybe.map .validation
                 |> Maybe.map
@@ -489,6 +493,6 @@ lazy thunk =
     andThen thunk (succeed ())
 
 
-getFormat : String -> Formats -> Maybe CustomFormat
-getFormat format formats =
-    formats |> Dict.fromList |> Dict.get format
+getFormat : String -> Formats -> Maybe Format
+getFormat format =
+    Dict.get format

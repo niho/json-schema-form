@@ -1,5 +1,6 @@
 module FieldsTest exposing (suite)
 
+import Dict
 import Expect exposing (Expectation)
 import Form as F
 import Form.Validate
@@ -18,7 +19,7 @@ import Test.Html.Selector exposing (..)
 
 options =
     { errors = \_ _ -> ""
-    , formats = []
+    , formats = Dict.empty
     }
 
 

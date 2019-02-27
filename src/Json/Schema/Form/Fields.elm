@@ -1,6 +1,6 @@
 module Json.Schema.Form.Fields exposing (schemaView)
 
-import Dict
+import Dict exposing (Dict)
 import Form as F
 import Form.Error exposing (ErrorValue(..))
 import Form.Input as Input
@@ -21,14 +21,14 @@ import Json.Schema.Definitions
         , blankSchema
         )
 import Json.Schema.Form.Error exposing (ErrorValue, Errors)
-import Json.Schema.Form.Format exposing (CustomFormat, Formats)
+import Json.Schema.Form.Format exposing (Format)
 import Json.Schema.Form.Validation exposing (validation)
 import Json.Schema.Form.Value exposing (Value(..))
 
 
 type alias Options =
     { errors : Errors
-    , formats : Formats
+    , formats : Dict String Format
     }
 
 
@@ -135,46 +135,105 @@ fieldView options path schema type_ form =
 txt : Options -> SubSchema -> F.FieldState ErrorValue String -> Html F.Msg
 txt options schema f =
     let
+        format =
+            schema.format
+                |> Maybe.andThen (getFormat options.formats)
+                |> Maybe.withDefault
+                    { prefix = Nothing
+                    , suffix = Nothing
+                    , placeholder = Nothing
+                    , autocomplete = Nothing
+                    , inputType = Nothing
+                    , lines = 1
+                    , validation = Form.Validate.succeed
+                    }
+
         attributes =
             [ classList
                 [ ( "form-control", True )
                 , ( "is-invalid", f.liveError /= Nothing )
+                , case schema.format of
+                    Just str ->
+                        ( "format-" ++ str, True )
+
+                    Nothing ->
+                        ( "", False )
                 ]
             , id f.path
-            ]
+            , if format.lines > 1 then
+                rows format.lines
 
-        placeholders =
-            case schema.examples of
-                Just examples ->
-                    examples
-                        |> List.map (Json.Decode.decodeValue Json.Decode.string)
-                        |> List.map Result.toMaybe
-                        |> List.filterMap identity
-                        |> List.map placeholder
+              else
+                type_ (format.inputType |> Maybe.withDefault inputType)
+            , placeholder (format.placeholder |> Maybe.withDefault "")
+            , case format.autocomplete of
+                Just "on" ->
+                    autocomplete True
+
+                Just "off" ->
+                    autocomplete False
+
+                Just str ->
+                    attribute "autocomplete" str
 
                 Nothing ->
-                    []
+                    autocomplete True
+            ]
+
+        inputType =
+            case schema.format of
+                Just "email" ->
+                    "email"
+
+                Just "idn-email" ->
+                    "email"
+
+                Just "date" ->
+                    "date"
+
+                Just "time" ->
+                    "time"
+
+                Just "date-time" ->
+                    "datetime-local"
+
+                Just "month" ->
+                    "month"
+
+                Just "week" ->
+                    "week"
+
+                Just "hostname" ->
+                    "url"
+
+                Just "idn-hostname" ->
+                    "url"
+
+                Just "uri" ->
+                    "url"
+
+                Just "iri" ->
+                    "url"
+
+                _ ->
+                    "text"
+
+        textInput =
+            inputGroup
+                format.prefix
+                format.suffix
+                [ if format.lines > 1 then
+                    Input.textArea f attributes
+
+                  else
+                    Input.textInput f attributes
+                ]
     in
     field options
         schema
         f
         [ fieldTitle schema |> Maybe.withDefault (text "")
-        , case schema.format of
-            Just "email" ->
-                Input.textInput f
-                    (attributes ++ placeholders ++ [ type_ "email" ])
-
-            Just format ->
-                case getFormat format options.formats |> Maybe.andThen .title of
-                    Just title ->
-                        inputGroup title
-                            [ Input.textInput f (attributes ++ placeholders) ]
-
-                    _ ->
-                        Input.textInput f (attributes ++ placeholders)
-
-            Nothing ->
-                Input.textInput f (attributes ++ placeholders)
+        , textInput
         ]
 
 
@@ -498,19 +557,40 @@ liveError func f =
             )
 
 
-inputGroup : String -> List (Html F.Msg) -> Html F.Msg
-inputGroup title content =
+inputGroup : Maybe String -> Maybe String -> List (Html F.Msg) -> Html F.Msg
+inputGroup prefix suffix content =
+    let
+        prepend =
+            case prefix of
+                Just string ->
+                    [ div
+                        [ class "input-group-prepend" ]
+                        [ div
+                            [ class "input-group-text" ]
+                            [ text string ]
+                        ]
+                    ]
+
+                Nothing ->
+                    []
+
+        append =
+            case suffix of
+                Just string ->
+                    [ div
+                        [ class "input-group-append" ]
+                        [ div
+                            [ class "input-group-text" ]
+                            [ text string ]
+                        ]
+                    ]
+
+                Nothing ->
+                    []
+    in
     div
         [ class "input-group" ]
-        ([ div
-            [ class "input-group-prepend" ]
-            [ div
-                [ class "input-group-text" ]
-                [ text title ]
-            ]
-         ]
-            ++ content
-        )
+        (prepend ++ content ++ append)
 
 
 fieldset : SubSchema -> List (Html F.Msg) -> Html F.Msg
@@ -588,6 +668,6 @@ conditional f conditions =
     Html.Keyed.node "div" [] <| List.filterMap cond conditions
 
 
-getFormat : String -> Formats -> Maybe CustomFormat
-getFormat format formats =
-    formats |> Dict.fromList |> Dict.get format
+getFormat : Dict String Format -> String -> Maybe Format
+getFormat formats format =
+    Dict.get format formats

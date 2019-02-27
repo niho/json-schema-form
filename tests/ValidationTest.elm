@@ -1,5 +1,6 @@
 module ValidationTest exposing (suite)
 
+import Dict
 import Expect exposing (Expectation)
 import Form.Field exposing (..)
 import Json.Encode
@@ -571,7 +572,7 @@ singleTypes =
 
 
 validate field schema =
-    validation [] schema field
+    validation Dict.empty schema field
         |> Result.mapError Debug.toString
 
 

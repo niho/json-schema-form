@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Dict
 import Form exposing (Msg(..))
 import Form.Error exposing (ErrorValue(..))
 import Form.Validate
@@ -14,7 +15,7 @@ import Json.Schema.Definitions
 import Json.Schema.Form exposing (Msg, State)
 import Json.Schema.Form.Encode
 import Json.Schema.Form.Error exposing (ErrorValue(..), Errors)
-import Json.Schema.Form.Format exposing (Formats)
+import Json.Schema.Form.Format exposing (Format)
 import Regex
 
 
@@ -25,11 +26,11 @@ main =
 
 init : State
 init =
-    case oneOfSchema of
+    case schema of
         Ok schema_ ->
             Json.Schema.Form.init
                 { errors = errorString
-                , formats = formats
+                , formats = Dict.fromList formats
                 }
                 schema_
 
@@ -133,52 +134,34 @@ errorString path error =
 personalNumber : Regex.Regex
 personalNumber =
     Maybe.withDefault Regex.never <|
-        Regex.fromString "^(19|20)[0-9]{6}[0-9]{4}$"
+        Regex.fromString "^(19|20)[0-9]{6}-?[0-9]{4}$"
 
 
-formats : Formats
+formats : List ( String, Format )
 formats =
     [ ( "personal-number"
-      , { title = Nothing
-        , validation = Form.Validate.format personalNumber
-        }
+      , Json.Schema.Form.Format.init
+            |> Json.Schema.Form.Format.withPlaceholder "ÅÅÅÅMMDD-NNNN"
+            |> Json.Schema.Form.Format.withValidation
+                (Form.Validate.format personalNumber)
+      )
+    , ( "currency-sek"
+      , Json.Schema.Form.Format.init
+            |> Json.Schema.Form.Format.withPrefix "SEK"
+            |> Json.Schema.Form.Format.withSuffix ".00"
+            |> Json.Schema.Form.Format.withInputType "number"
+      )
+    , ( "phone"
+      , Json.Schema.Form.Format.init
+            |> Json.Schema.Form.Format.withInputType "tel"
+            |> Json.Schema.Form.Format.withPrefix "+46"
+            |> Json.Schema.Form.Format.withAutocomplete "tel-national"
+      )
+    , ( "description"
+      , Json.Schema.Form.Format.init
+            |> Json.Schema.Form.Format.withLines 5
       )
     ]
-
-
-oneOfSchema =
-    buildSchema
-        |> withTitle "What modes of transportation do you use when you travel?"
-        |> withOneOf
-            [ buildSchema
-                |> withTitle "Walking"
-                |> withType "string"
-                |> withConst (Json.Encode.string "walking")
-            , buildSchema
-                |> withTitle "Driving car"
-                |> withType "string"
-                |> withConst (Json.Encode.string "driving")
-            , buildSchema
-                |> withTitle "Boat"
-                |> withType "string"
-                |> withConst (Json.Encode.string "boat")
-            , buildSchema
-                |> withTitle "Bus"
-                |> withType "string"
-                |> withConst (Json.Encode.string "bus")
-            , buildSchema
-                |> withTitle "Other"
-                |> withType "object"
-                |> withRequired [ "details" ]
-                |> withProperties
-                    [ ( "details"
-                      , buildSchema
-                            |> withType "string"
-                            |> withTitle "Please specify"
-                      )
-                    ]
-            ]
-        |> toSchema
 
 
 schema : Result String Json.Schema.Definitions.Schema
@@ -269,12 +252,31 @@ schema =
                                 ]
                         ]
               )
+            , ( "amount"
+              , buildSchema
+                    |> withTitle "Amount (SEK)"
+                    |> withType "integer"
+                    |> withFormat "currency-sek"
+              )
+            , ( "calendar"
+              , buildSchema
+                    |> withType "array"
+                    |> withItems
+                        [ buildSchema
+                            |> withTitle "Date"
+                            |> withType "string"
+                            |> withFormat "date"
+                        , buildSchema
+                            |> withTitle "Time"
+                            |> withType "string"
+                            |> withFormat "time"
+                        ]
+              )
             , ( "color"
               , buildSchema
                     |> withTitle "Color"
-                    |> withExamples
-                        [ string "Please enter either red, gren or blue."
-                        ]
+                    |> withDescription
+                        "Please enter either red, gren or blue."
                     |> withNullableType "string"
                     |> withEnum
                         [ string "red"
@@ -326,52 +328,61 @@ schema =
                     |> withOneOf
                         [ buildSchema
                             |> withTitle "Walking"
+                            |> withType "string"
                             |> withConst (Json.Encode.string "walking")
                         , buildSchema
                             |> withTitle "Driving car"
+                            |> withType "string"
                             |> withConst (Json.Encode.string "driving")
                         , buildSchema
                             |> withTitle "Boat"
+                            |> withType "string"
                             |> withConst (Json.Encode.string "boat")
                         , buildSchema
                             |> withTitle "Bus"
+                            |> withType "string"
                             |> withConst (Json.Encode.string "bus")
                         , buildSchema
-                            |> withTitle "Airplane"
+                            |> withTitle "Other"
                             |> withType "object"
-                            |> withRequired [ "airports" ]
+                            |> withRequired [ "details" ]
                             |> withProperties
-                                [ ( "airports"
+                                [ ( "details"
                                   , buildSchema
-                                        |> withTitle "Add airport"
-                                        |> withType "array"
-                                        |> withDefault (list string [ "LHR", "CDG" ])
-                                        |> withUniqueItems True
-                                        |> withMinItems 2
-                                        |> withItem
-                                            (buildSchema
-                                                |> withType "string"
-                                                |> withAnyOf
-                                                    [ boolSchema False
-                                                    , buildSchema
-                                                        |> withTitle "Stockholm Arlanda"
-                                                        |> withConst (string "ARN")
-                                                    , buildSchema
-                                                        |> withTitle "London Heathrow"
-                                                        |> withConst (string "LHR")
-                                                        |> withDescription "Heathrow Airport is a major international airport in London, United Kingdom."
-                                                    , buildSchema
-                                                        |> withTitle "Dubai International Airport"
-                                                        |> withConst (string "DXB")
-                                                    , buildSchema
-                                                        |> withTitle "Paris Charles de Gaulle"
-                                                        |> withDescription "Paris Charles de Gaulle Airport is the largest international airport in France and the second largest in Europe."
-                                                        |> withConst (string "CDG")
-                                                    ]
-                                            )
+                                        |> withType "string"
+                                        |> withTitle "Please specify"
                                   )
                                 ]
                         ]
+              )
+            , ( "airports"
+              , buildSchema
+                    |> withTitle "Add airport"
+                    |> withType "array"
+                    |> withDefault (list string [ "LHR", "CDG" ])
+                    |> withUniqueItems True
+                    |> withMinItems 2
+                    |> withItem
+                        (buildSchema
+                            |> withType "string"
+                            |> withAnyOf
+                                [ boolSchema False
+                                , buildSchema
+                                    |> withTitle "Stockholm Arlanda"
+                                    |> withConst (string "ARN")
+                                , buildSchema
+                                    |> withTitle "London Heathrow"
+                                    |> withConst (string "LHR")
+                                    |> withDescription "Heathrow Airport is a major international airport in London, United Kingdom."
+                                , buildSchema
+                                    |> withTitle "Dubai International Airport"
+                                    |> withConst (string "DXB")
+                                , buildSchema
+                                    |> withTitle "Paris Charles de Gaulle"
+                                    |> withDescription "Paris Charles de Gaulle Airport is the largest international airport in France and the second largest in Europe."
+                                    |> withConst (string "CDG")
+                                ]
+                        )
               )
             , ( "social"
               , buildSchema
@@ -436,6 +447,12 @@ schema =
                                 |> withFormat "personal-number"
                           )
                         ]
+              )
+            , ( "description"
+              , buildSchema
+                    |> withType "string"
+                    |> withTitle "Description"
+                    |> withFormat "description"
               )
             , ( "terms"
               , buildSchema
