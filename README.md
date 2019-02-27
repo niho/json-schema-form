@@ -27,6 +27,7 @@ See the [example project](https://github.com/niho/json-schema-form/tree/master/e
 module Main exposing (main)
 
 import Browser
+import Dict
 import Html exposing (..)
 import Html.Events exposing (onSubmit)
 import Json.Schema
@@ -59,7 +60,7 @@ init =
         Ok schema_ ->
             Json.Schema.Form.init
                 { errors = \path error -> "Invalid field: " ++ path
-                , formats = []
+                , formats = Dict.empty
                 }
                 schema_
 
