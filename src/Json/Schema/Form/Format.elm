@@ -1,6 +1,7 @@
 module Json.Schema.Form.Format exposing
     ( Format, init
     , withPrefix, withSuffix, withPlaceholder, withAutocompleteOff, withAutocompleteOn, withAutocomplete, withInputType, withLines
+    , withInput
     , withValidation
     )
 
@@ -17,13 +18,21 @@ module Json.Schema.Form.Format exposing
 @docs withPrefix, withSuffix, withPlaceholder, withAutocompleteOff, withAutocompleteOn, withAutocomplete, withInputType, withLines
 
 
+# Custom input
+
+@docs withInput
+
+
 # Validation
 
 @docs withValidation
 
 -}
 
+import Form exposing (Msg)
+import Form.Input exposing (Input)
 import Form.Validate exposing (Validation)
+import Html exposing (Html)
 import Json.Schema.Form.Error exposing (ErrorValue)
 
 
@@ -36,6 +45,7 @@ type alias Format =
     , autocomplete : Maybe String
     , inputType : Maybe String
     , lines : Int
+    , input : Maybe (Input ErrorValue String)
     , validation : String -> Validation ErrorValue String
     }
 
@@ -50,6 +60,7 @@ init =
     , autocomplete = Nothing
     , inputType = Nothing
     , lines = 1
+    , input = Nothing
     , validation = Form.Validate.succeed
     }
 
@@ -108,6 +119,13 @@ withInputType str format =
 withLines : Int -> Format -> Format
 withLines lines format =
     { format | lines = Basics.max 0 lines }
+
+
+{-| Customize the input field with your own HTML.
+-}
+withInput : Input ErrorValue String -> Format -> Format
+withInput input format =
+    { format | input = Just input }
 
 
 {-| A validation function (see [etaque/elm-form](https://package.elm-lang.org/packages/etaque/elm-form/4.0.0/Form-Validate) for details on how to write a validation function).

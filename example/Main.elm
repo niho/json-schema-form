@@ -2,12 +2,14 @@ module Main exposing (main)
 
 import Browser
 import Dict
-import Form exposing (Msg(..))
+import Form exposing (InputType(..), Msg(..))
 import Form.Error exposing (ErrorValue(..))
+import Form.Field exposing (FieldValue(..))
+import Form.Input exposing (Input)
 import Form.Validate
 import Html exposing (..)
-import Html.Attributes exposing (class)
-import Html.Events exposing (onSubmit)
+import Html.Attributes exposing (class, style)
+import Html.Events exposing (onClick, onSubmit)
 import Json.Encode exposing (bool, float, int, list, string)
 import Json.Schema
 import Json.Schema.Builder exposing (..)
@@ -137,6 +139,28 @@ personalNumber =
         Regex.fromString "^(19|20)[0-9]{6}-?[0-9]{4}$"
 
 
+customInput : Input ErrorValue String
+customInput f attrs =
+    button
+        ([ onClick
+            (Form.Input f.path
+                Form.Text
+                (String "Hello world")
+            )
+         , class "btn btn-lg btn-light"
+         , style "height" "auto"
+         ]
+            ++ attrs
+        )
+        [ case f.value of
+            Just str ->
+                text str
+
+            Nothing ->
+                text "Click me!"
+        ]
+
+
 formats : List ( String, Format )
 formats =
     [ ( "personal-number"
@@ -160,6 +184,10 @@ formats =
     , ( "description"
       , Json.Schema.Form.Format.init
             |> Json.Schema.Form.Format.withLines 5
+      )
+    , ( "custom"
+      , Json.Schema.Form.Format.init
+            |> Json.Schema.Form.Format.withInput customInput
       )
     ]
 
@@ -261,6 +289,10 @@ schema =
             , ( "calendar"
               , buildSchema
                     |> withType "array"
+                    |> withDefault
+                        (Json.Encode.list Json.Encode.string
+                            [ "2019-02-27", "18:00:00" ]
+                        )
                     |> withItems
                         [ buildSchema
                             |> withTitle "Date"
@@ -453,6 +485,12 @@ schema =
                     |> withType "string"
                     |> withTitle "Description"
                     |> withFormat "description"
+              )
+            , ( "custom"
+              , buildSchema
+                    |> withType "string"
+                    |> withTitle "Custom input"
+                    |> withFormat "custom"
               )
             , ( "terms"
               , buildSchema

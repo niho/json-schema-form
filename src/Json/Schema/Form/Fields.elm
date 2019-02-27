@@ -145,26 +145,24 @@ txt options schema f =
                     , autocomplete = Nothing
                     , inputType = Nothing
                     , lines = 1
+                    , input = Nothing
                     , validation = Form.Validate.succeed
                     }
 
+        classes =
+            [ ( "form-control", True )
+            , ( "is-invalid", f.liveError /= Nothing )
+            , case schema.format of
+                Just str ->
+                    ( "format-" ++ str, True )
+
+                Nothing ->
+                    ( "", False )
+            ]
+
         attributes =
-            [ classList
-                [ ( "form-control", True )
-                , ( "is-invalid", f.liveError /= Nothing )
-                , case schema.format of
-                    Just str ->
-                        ( "format-" ++ str, True )
-
-                    Nothing ->
-                        ( "", False )
-                ]
+            [ classList classes
             , id f.path
-            , if format.lines > 1 then
-                rows format.lines
-
-              else
-                type_ (format.inputType |> Maybe.withDefault inputType)
             , placeholder (format.placeholder |> Maybe.withDefault "")
             , case format.autocomplete of
                 Just "on" ->
@@ -223,10 +221,22 @@ txt options schema f =
                 format.prefix
                 format.suffix
                 [ if format.lines > 1 then
-                    Input.textArea f attributes
+                    Input.textArea f (attributes ++ [ rows format.lines ])
 
                   else
-                    Input.textInput f attributes
+                    case format.input of
+                        Just html ->
+                            html f attributes
+
+                        Nothing ->
+                            Input.textInput f
+                                (attributes
+                                    ++ [ type_
+                                            (format.inputType
+                                                |> Maybe.withDefault inputType
+                                            )
+                                       ]
+                                )
                 ]
     in
     field options
