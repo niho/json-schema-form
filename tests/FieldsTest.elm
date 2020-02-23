@@ -77,11 +77,31 @@ suite =
                         \_ -> buildSchema |> isCheckbox
                     , describe "oneOf"
                         [ test "should be a switch" <|
-                            \_ -> buildSchema |> isSwitch
+                            \_ ->
+                                buildSchema
+                                    |> withOneOf
+                                        [ buildSchema
+                                            |> withTitle "One"
+                                            |> withConst (Json.Encode.string "one")
+                                        , buildSchema
+                                            |> withTitle "Two"
+                                            |> withConst (Json.Encode.string "two")
+                                        ]
+                                    |> isSwitch
                         ]
                     , describe "anyOf"
                         [ test "should be a switch" <|
-                            \_ -> buildSchema |> isSwitch
+                            \_ ->
+                                buildSchema
+                                    |> withAnyOf
+                                        [ buildSchema
+                                            |> withTitle "One"
+                                            |> withConst (Json.Encode.string "one")
+                                        , buildSchema
+                                            |> withTitle "Two"
+                                            |> withConst (Json.Encode.string "two")
+                                        ]
+                                    |> isSwitch
                         ]
                     ]
                 , describe "nullable type" singleTypes
@@ -216,6 +236,14 @@ singleTypes =
                 \_ ->
                     buildSchema
                         |> withType "object"
+                        |> withOneOf
+                            [ buildSchema
+                                |> withTitle "One"
+                                |> withConst (Json.Encode.string "one")
+                            , buildSchema
+                                |> withTitle "Two"
+                                |> withConst (Json.Encode.string "two")
+                            ]
                         |> isSwitch
             ]
         , describe "anyOf"
@@ -223,6 +251,14 @@ singleTypes =
                 \_ ->
                     buildSchema
                         |> withType "object"
+                        |> withAnyOf
+                            [ buildSchema
+                                |> withTitle "One"
+                                |> withConst (Json.Encode.string "one")
+                            , buildSchema
+                                |> withTitle "Two"
+                                |> withConst (Json.Encode.string "two")
+                            ]
                         |> isSwitch
             ]
         ]
@@ -266,8 +302,10 @@ hasFieldDescription schema =
     schema
         |> withDescription "Lorem ipsum."
         |> view
-            (Query.find [ tag "div", class "form-text" ]
-                >> Query.has [ text "Lorem ipsum." ]
+            (Query.find [ class "field-meta" ]
+                >> (Query.find [ class "form-text" ]
+                        >> Query.has [ text "Lorem ipsum." ]
+                   )
             )
 
 
@@ -353,9 +391,9 @@ isList schema =
                 , Query.find [ tag "button", class "btn-add" ]
                     >> Event.simulate Event.click
                     >> Event.expect (F.Append "")
-                , Query.find [ tag "div", class "form-text" ]
+                , Query.find [ class "form-text" ]
                     >> Query.has [ text "Lorem ipsum." ]
-                , Query.children [ tag "ol", class "list-group" ]
+                , Query.findAll [ class "list-group" ]
                     >> Query.count (Expect.equal 1)
                 ]
             )
@@ -368,8 +406,8 @@ isTuple schema =
             , hasFieldDescription
             , view
                 (Expect.all
-                    [ Query.has [ tag "div", class "form-group" ]
-                    , Query.findAll [ tag "div", class "form-group" ]
+                    [ Query.has [ class "form-group" ]
+                    , Query.findAll [ class "form-group" ]
                         >> Query.count (Expect.atLeast 1)
                     ]
                 )
@@ -378,21 +416,13 @@ isTuple schema =
 
 isSwitch schema =
     schema
-        |> withAnyOf
-            [ buildSchema
-                |> withTitle "One"
-                |> withConst (Json.Encode.string "one")
-            , buildSchema
-                |> withTitle "Two"
-                |> withConst (Json.Encode.string "two")
-            ]
         |> Expect.all
-            [ isField
-            , hasFieldDescription
-            , view
+            [ --isField
+              --, hasFieldDescription
+              view
                 (Expect.all
                     [ Query.has [ tag "div", class "form-group" ]
-                    , Query.find [ tag "div", class "form-group" ]
+                    , Query.find [ class "switch" ]
                         >> Query.children [ tag "div", class "form-check" ]
                         >> Query.each
                             (Expect.all

@@ -495,7 +495,8 @@ schema =
             , ( "terms"
               , buildSchema
                     |> withType "boolean"
-                    |> withTitle "Jag accepterar villkoren"
+                    |> withTitle "I accept the terms"
+                    |> withDescription "Testing field meta."
                     |> withConst (bool True)
               )
             ]

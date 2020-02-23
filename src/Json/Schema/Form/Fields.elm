@@ -249,6 +249,28 @@ txt options schema f =
 
 checkbox : Options -> SubSchema -> F.FieldState ErrorValue Bool -> Html F.Msg
 checkbox options schema f =
+    let
+        content =
+            [ div [ class "checkbox" ]
+                [ Input.checkboxInput f
+                    [ classList
+                        [ ( "form-check-input", True )
+                        , ( "is-invalid", f.liveError /= Nothing )
+                        ]
+                    , id f.path
+                    ]
+                , text (schema.title |> Maybe.withDefault "")
+                ]
+            ]
+
+        meta =
+            [ fieldDescription schema ]
+                |> List.filterMap identity
+
+        feedback =
+            [ liveError options.errors f ]
+                |> List.filterMap identity
+    in
     div
         [ classList
             [ ( "form-group", True )
@@ -257,16 +279,13 @@ checkbox options schema f =
             ]
         ]
         [ label [ class "form-check-label" ]
-            [ Input.checkboxInput f
-                [ classList
-                    [ ( "form-check-input", True )
-                    , ( "is-invalid", f.liveError /= Nothing )
-                    ]
-                , id f.path
-                ]
-            , text (schema.title |> Maybe.withDefault "")
-            , liveError options.errors f |> Maybe.withDefault (text "")
-            , fieldDescription schema |> Maybe.withDefault (text "")
+            [ div [ class "field-input" ] (content ++ feedback)
+            , case meta of
+                [] ->
+                    text ""
+
+                html ->
+                    div [ class "field-meta" ] html
             ]
         ]
 
@@ -317,7 +336,7 @@ select options schema f =
                 ]
             , id f.path
             ]
-        , conditional f descriptions
+        , conditional "select-more" f descriptions
         ]
 
 
@@ -374,7 +393,7 @@ list options path form ( title, schema ) =
 
         itemView idx =
             li
-                [ class "list-group-item bg-light" ]
+                [ class "list-group-item" ]
                 [ schemaView options (itemPath idx) schema form
                 , button
                     [ onClickPreventDefault (F.RemoveItem (fieldPath path) idx)
@@ -425,9 +444,9 @@ radio fieldState ( value, title ) =
         [ Input.radioInput value
             fieldState
             [ class "form-check-input"
-            , id fieldState.path
+            , id (fieldPath [ fieldState.path, value ])
             ]
-        , text title
+        , span [ class "label-text" ] [ text title ]
         ]
 
 
@@ -476,9 +495,9 @@ switch options path schema form =
     in
     field options schema f <|
         [ fieldTitle schema |> Maybe.withDefault (text "")
-        , div [ class "form-group", id f.path, tabindex -1 ]
+        , div [ class "switch", id f.path, tabindex -1 ]
             (List.indexedMap itemButton items)
-        , conditional f (List.indexedMap itemFields items)
+        , conditional "switch-more" f (List.indexedMap itemFields items)
         ]
 
 
@@ -501,7 +520,14 @@ field options schema f content =
             ]
         ]
         [ label [ for f.path, class "d-block" ]
-            (content ++ feedback ++ meta)
+            [ div [ class "field-input" ] (content ++ feedback)
+            , case meta of
+                [] ->
+                    text ""
+
+                html ->
+                    div [ class "field-meta" ] html
+            ]
         ]
 
 
@@ -665,8 +691,8 @@ alwaysPreventDefault msg =
     ( msg, True )
 
 
-conditional : F.FieldState e String -> List ( String, Html F.Msg ) -> Html F.Msg
-conditional f conditions =
+conditional : String -> F.FieldState e String -> List ( String, Html F.Msg ) -> Html F.Msg
+conditional className f conditions =
     let
         cond ( value, html ) =
             if f.value == Just value then
@@ -675,7 +701,8 @@ conditional f conditions =
             else
                 Nothing
     in
-    Html.Keyed.node "div" [] <| List.filterMap cond conditions
+    Html.Keyed.node "div" [ class className ] <|
+        List.filterMap cond conditions
 
 
 getFormat : Dict String Format -> String -> Maybe Format
